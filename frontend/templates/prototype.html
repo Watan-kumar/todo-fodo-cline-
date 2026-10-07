@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crop Care AI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">🌱</div>
+      <div>
+        <h1 data-i18n="appName">Crop Care AI</h1>
+        <p data-i18n="farmerFirst">Farmer First • AI Powered</p>
+      </div>
+    </div>
+    <div class="languages">
+      <button type="button" onclick="setLanguage('te-IN')">తెలుగు</button>
+      <button type="button" onclick="setLanguage('hi-IN')">हिन्दी</button>
+      <button type="button" onclick="setLanguage('en-IN')">English</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button type="button" class="active" onclick="openTab('home', this)" data-i18n="home">Home</button>
+    <button type="button" onclick="openTab('scan', this)" data-i18n="scan">Scan</button>
+    <button type="button" onclick="openTab('treatment', this)" data-i18n="treatment">Treatment</button>
+    <button type="button" onclick="openTab('daily', this)" data-i18n="daily">Daily Care</button>
+    <button type="button" onclick="openTab('alerts', this)" data-i18n="alerts">Alerts</button>
+  </nav>
+
+  <main>
+    <section id="home" class="screen active">
+      <div class="hero">
+        <div>
+          <span class="badge">AI 🌾</span>
+          <h2 data-i18n="greeting">Protect your crop with smart guidance</h2>
+          <p data-i18n="homeDescription">Upload a crop image to check disease risk and get farmer-friendly guidance.</p>
+          <button class="primary" type="button" onclick="openTab('scan')" data-i18n="takePhoto">📷 Check Crop</button>
+          <button class="secondary" type="button" onclick="speakKey('voiceIntro')" data-i18n="listen">🔊 Listen</button>
+        </div>
+        <div class="crop-art">🌾<br>🌱🍅🌿</div>
+      </div>
+
+      <div class="cards">
+        <div class="card"><span>🌡️</span><b data-i18n="temperature">Temperature</b><strong>28°C</strong></div>
+        <div class="card"><span>💧</span><b data-i18n="humidity">Humidity</b><strong>72%</strong></div>
+        <div class="card"><span>⚠️</span><b data-i18n="risk">Disease Risk</b><strong data-i18n="riskLevel">Medium</strong></div>
+      </div>
+    </section>
+
+    <section id="scan" class="screen">
+      <div class="section-head">
+        <h2 data-i18n="scanTitle">Crop Disease Scan</h2>
+        <p data-i18n="scanDescription">Select a clear leaf/crop photo.</p>
+      </div>
+
+      <div class="upload-box">
+        <input id="cropImage" type="file" accept="image/*" onchange="previewImage(event)">
+        <label for="cropImage" class="upload-label">📷 <span data-i18n="takePhoto">Choose Crop Photo</span></label>
+        <img id="preview" alt="Crop preview">
+        <button class="primary full" type="button" onclick="detectDisease()" data-i18n="detectDisease">🔍 Detect Disease</button>
+      </div>
+
+      <div id="diagnosisResult" class="result hidden">
+        <h3 data-i18n="aiResult">AI Result</h3>
+        <div class="result-grid">
+          <div><span data-i18n="crop">Crop</span><b>Tomato</b></div>
+          <div><span data-i18n="earlyBlight">Disease</span><b data-i18n="earlyBlight">Early Blight</b></div>
+          <div><span data-i18n="confidence">Confidence</span><b>94%</b></div>
+          <div><span data-i18n="severity">Severity</span><b data-i18n="moderate">Moderate</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="treatment" class="screen">
+      <div class="section-head">
+        <h2 data-i18n="treatmentInfo">Treatment Guidance</h2>
+        <p data-i18n="treatmentAssist">Farmer-friendly steps based on the detected disease.</p>
+      </div>
+
+      <div class="info-card">
+        <h3>🦠 <span data-i18n="earlyBlight">Tomato Early Blight</span></h3>
+        <p data-i18n="firstSteps">First steps</p>
+        <ol>
+          <li data-i18n="step1">Remove heavily infected leaves.</li>
+          <li data-i18n="step2">Avoid overhead watering and keep leaves dry.</li>
+          <li data-i18n="step3">Use only a locally approved product according to its label.</li>
+        </ol>
+      </div>
+
+      <div class="warning">
+        <b>⚠️ <span data-i18n="importantNote">Important</span></b>
+        <p data-i18n="pesticideWarning">Pesticide recommendations must be verified with local agricultural guidance and the product label before use.</p>
+      </div>
+
+      <div class="info-card">
+        <h3 data-i18n="cropProtection">Crop Protection</h3>
+        <p><b data-i18n="optionA">Option A:</b> <span data-i18n="activeIngredient">Use a registered fungicide only when appropriate.</span></p>
+        <p><b data-i18n="verifiedRequired">Verified Required:</b> <span data-i18n="labelVerification">Check crop, disease, dosage and waiting period on the label.</span></p>
+        <p><b data-i18n="safety">Safety:</b> <span data-i18n="safetyText">Wear recommended protective equipment and follow label instructions.</span></p>
+      </div>
+
+      <div class="apollo">
+        <h3>🏥 <span data-i18n="apolloTitle">Apollo / Expert Collaboration</span></h3>
+        <p data-i18n="apolloDescription">Expert review can be added as a verified-data and advisory layer. This prototype does not claim a live Apollo partnership.</p>
+        <span class="verified" data-i18n="partnerVerified">Verification layer</span>
+        <button class="secondary" type="button" onclick="requestExpert()" data-i18n="requestReview">Request Expert Review</button>
+      </div>
+    </section>
+
+    <section id="daily" class="screen">
+      <div class="section-head">
+        <h2 data-i18n="dailyTitle">Daily Crop Care</h2>
+        <p data-i18n="dailyDescription">Simple actions to protect your crop every day.</p>
+      </div>
+      <div class="daily-card">
+        <h3>🌤️ <span data-i18n="weather">Weather</span></h3>
+        <p>28°C • 72% humidity</p>
+        <h3>🦠 <span data-i18n="diseaseRisk">Disease Risk</span></h3>
+        <p data-i18n="medium">Medium</p>
+        <h3>🌱 <span data-i18n="todaysAction">Today's Action</span></h3>
+        <p data-i18n="todayActionText">Inspect lower leaves and remove clearly infected plant material.</p>
+        <button class="secondary" type="button" onclick="speakKey('dailyVoice')" data-i18n="dailyUpdate">🔊 Hear Daily Update</button>
+      </div>
+    </section>
+
+    <section id="alerts" class="screen">
+      <div class="section-head">
+        <h2 data-i18n="farmerAlerts">Farmer Alerts</h2>
+      </div>
+      <div class="alert-card">
+        <h3>⚠️ <span data-i18n="riskAlert">Disease Risk Alert</span></h3>
+        <p data-i18n="riskAlertText">Moderate disease risk detected in the current demo conditions.</p>
+      </div>
+      <div class="alert-card">
+        <h3>📍 <span data-i18n="nearbyAlert">Nearby Outbreak</span></h3>
+        <p data-i18n="nearbyAlertText">Outbreak map is a prototype feature. Connect verified regional data before real-world alerts.</p>
+      </div>
+      <button class="secondary" type="button" onclick="speakKey('nearbyVoice')" data-i18n="voiceAlert">🔊 Hear Alert</button>
+    </section>
+  </main>
+
+  <footer>
+    <span>🌱 Crop Care AI</span>
+    <span data-i18n="language">Language</span>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,446 @@
+{
+  "Apple___Apple_scab": {
+    "crop": "Apple",
+    "disease": "Apple scab",
+    "symptoms": [
+      "Olive to black spots can appear on young leaves.",
+      "Spots may become scab-like as tissue ages.",
+      "Fruit tissue may become rough or misshapen.",
+      "Symptoms are favored by prolonged leaf wetness.",
+      "Older lesions can darken and become more obvious."
+    ],
+    "advice": "Use this as a screening result; confirm with local extension guidance before treatment."
+  },
+  "Apple___Black_rot": {
+    "crop": "Apple",
+    "disease": "Black rot",
+    "symptoms": [
+      "Dark leaf spots may enlarge over time.",
+      "Leaf tissue around lesions can become chlorotic.",
+      "Fruit can develop expanding dark rot.",
+      "Infected tissue may become dry and sunken.",
+      "Symptoms may occur on leaves, limbs or fruit."
+    ],
+    "advice": "Inspect the whole plant and remove affected material according to local guidance."
+  },
+  "Apple___Cedar_apple_rust": {
+    "crop": "Apple",
+    "disease": "Cedar-apple rust",
+    "symptoms": [
+      "Yellow-orange leaf spots can develop.",
+      "Spots may enlarge as the season progresses.",
+      "Orange structures can occur on the underside of leaves.",
+      "Leaf yellowing may accompany severe infection.",
+      "Fruit can show abnormal lesions."
+    ],
+    "advice": "Confirm the diagnosis locally because nutrient and other leaf-spot problems can look similar."
+  },
+  "Apple___healthy": {
+    "crop": "Apple",
+    "disease": "Healthy",
+    "symptoms": [
+      "No obvious disease pattern detected by the model.",
+      "Leaf color and texture appear compatible with the training class.",
+      "No strong lesion pattern is predicted.",
+      "The image may still contain an issue outside the training classes.",
+      "Image quality can affect the result."
+    ],
+    "advice": "Healthy prediction does not guarantee the plant is disease-free."
+  },
+  "Blueberry___healthy": {
+    "crop": "Blueberry",
+    "disease": "Healthy",
+    "symptoms": [
+      "No obvious disease pattern detected.",
+      "No strong lesion pattern is predicted.",
+      "Leaf appearance is compatible with the healthy training class.",
+      "The model only recognizes patterns represented in training data.",
+      "Field symptoms may be subtler than image symptoms."
+    ],
+    "advice": "Continue normal scouting and verify unusual symptoms."
+  },
+  "Cherry_(including_sour)___Powdery_mildew": {
+    "crop": "Cherry",
+    "disease": "Powdery mildew",
+    "symptoms": [
+      "White powdery growth can occur on leaf surfaces.",
+      "Young tissue may appear distorted.",
+      "Affected leaves may curl or become stunted.",
+      "Powdery growth is often more visible under favorable humidity.",
+      "Severe infection can reduce healthy leaf area."
+    ],
+    "advice": "Confirm with an agricultural professional before choosing a treatment."
+  },
+  "Cherry_(including_sour)___healthy": {
+    "crop": "Cherry",
+    "disease": "Healthy",
+    "symptoms": [
+      "No obvious disease pattern detected.",
+      "No strong lesion pattern is predicted.",
+      "Leaf appearance is compatible with the healthy training class.",
+      "Training classes do not cover every cherry disorder.",
+      "Image quality affects confidence."
+    ],
+    "advice": "Continue scouting for changes over time."
+  },
+  "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": {
+    "crop": "Corn",
+    "disease": "Gray leaf spot",
+    "symptoms": [
+      "Rectangular lesions may appear on leaves.",
+      "Lesions can become tan to gray.",
+      "Lesion edges can run parallel to leaf veins.",
+      "Multiple lesions may merge as disease progresses.",
+      "Lower leaves may show symptoms first."
+    ],
+    "advice": "Confirm with local crop-extension guidance."
+  },
+  "Corn_(maize)___Common_rust_": {
+    "crop": "Corn",
+    "disease": "Common rust",
+    "symptoms": [
+      "Rust-colored to dark brown elongated pustules can occur.",
+      "Pustules can appear on both leaf surfaces.",
+      "Pustules darken as they age.",
+      "Leaves may yellow under severe disease.",
+      "Young leaves can be more susceptible."
+    ],
+    "advice": "Common rust is associated with cool, wet conditions; verify locally."
+  },
+  "Corn_(maize)___Northern_Leaf_Blight": {
+    "crop": "Corn",
+    "disease": "Northern leaf blight",
+    "symptoms": [
+      "Long elliptical or cigar-shaped lesions can occur.",
+      "Early lesions may be gray-green.",
+      "Older lesions can turn tan.",
+      "Lesions may contain dark fungal sporulation.",
+      "Disease commonly starts on lower leaves and moves upward."
+    ],
+    "advice": "Confirm diagnosis and severity with local crop scouting guidance."
+  },
+  "Corn_(maize)___healthy": {
+    "crop": "Corn",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious lesion pattern is predicted.",
+      "Leaf appearance matches the healthy training class.",
+      "Other corn problems may not be represented.",
+      "Field scouting remains necessary."
+    ],
+    "advice": "Continue monitoring plant health."
+  },
+  "Grape___Black_rot": {
+    "crop": "Grape",
+    "disease": "Black rot",
+    "symptoms": [
+      "Leaf lesions may begin as small spots.",
+      "Spots can enlarge and darken.",
+      "Fruit can develop dark rot.",
+      "Affected fruit may shrivel.",
+      "Disease can progress during warm, wet periods."
+    ],
+    "advice": "Verify with local viticulture guidance."
+  },
+  "Grape___Esca_(Black_Measles)": {
+    "crop": "Grape",
+    "disease": "Esca (Black Measles)",
+    "symptoms": [
+      "Leaf tissue may show interveinal discoloration.",
+      "Leaf symptoms can appear as striped or patchy patterns.",
+      "Fruit may develop dark spotting.",
+      "Symptoms can vary between seasons.",
+      "Wood symptoms may accompany foliar symptoms."
+    ],
+    "advice": "Field diagnosis is recommended because grape trunk diseases are complex."
+  },
+  "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": {
+    "crop": "Grape",
+    "disease": "Leaf blight / Isariopsis leaf spot",
+    "symptoms": [
+      "Leaf spots may be dark and irregular.",
+      "Lesions can enlarge with disease progress.",
+      "Affected tissue can become necrotic.",
+      "Multiple spots can reduce healthy leaf area.",
+      "Symptoms may be more visible under humid conditions."
+    ],
+    "advice": "Confirm with a regional plant pathology resource."
+  },
+  "Grape___healthy": {
+    "crop": "Grape",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious leaf-spot pattern is predicted.",
+      "Appearance matches the healthy training class.",
+      "The model does not cover every grape disorder.",
+      "Image quality influences confidence."
+    ],
+    "advice": "Continue routine vineyard scouting."
+  },
+  "Orange___Haunglongbing_(Citrus_greening)": {
+    "crop": "Orange",
+    "disease": "Huanglongbing (citrus greening)",
+    "symptoms": [
+      "Leaves can develop blotchy, uneven yellowing.",
+      "Yellowing may be asymmetrical across leaf veins.",
+      "Trees can show general decline.",
+      "Fruit may be small or poorly colored.",
+      "Symptoms can resemble nutrient deficiencies."
+    ],
+    "advice": "Because citrus greening is regulated and serious, confirm suspected cases with local agricultural authorities."
+  },
+  "Peach___Bacterial_spot": {
+    "crop": "Peach",
+    "disease": "Bacterial spot",
+    "symptoms": [
+      "Small dark leaf spots can develop.",
+      "Spots may enlarge and become irregular.",
+      "Leaves may develop yellow halos.",
+      "Fruit can develop dark sunken spots.",
+      "Severe infection can cause premature leaf drop."
+    ],
+    "advice": "Confirm with local extension recommendations."
+  },
+  "Peach___healthy": {
+    "crop": "Peach",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious spot pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "The model cannot rule out unseen diseases.",
+      "Field inspection remains important."
+    ],
+    "advice": "Continue normal orchard scouting."
+  },
+  "Pepper,_bell___Bacterial_spot": {
+    "crop": "Bell pepper",
+    "disease": "Bacterial spot",
+    "symptoms": [
+      "Small dark lesions can occur on leaves.",
+      "Lesions may have yellow or light-green halos.",
+      "Fruit can develop dark raised or corky spots.",
+      "Young tissue can be affected.",
+      "Warm, wet conditions can favor disease."
+    ],
+    "advice": "Confirm with local vegetable pathology guidance."
+  },
+  "Pepper,_bell___healthy": {
+    "crop": "Bell pepper",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious leaf-spot pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "Other nutrient or pest problems may look different.",
+      "Image quality affects confidence."
+    ],
+    "advice": "Continue crop scouting."
+  },
+  "Potato___Early_blight": {
+    "crop": "Potato",
+    "disease": "Early blight",
+    "symptoms": [
+      "Small dark spots may appear on older foliage.",
+      "Larger lesions can show concentric target-like rings.",
+      "Surrounding tissue may yellow.",
+      "Severe infection can cause defoliation.",
+      "Stem or tuber symptoms can also occur."
+    ],
+    "advice": "Confirm disease before selecting a management approach."
+  },
+  "Potato___Late_blight": {
+    "crop": "Potato",
+    "disease": "Late blight",
+    "symptoms": [
+      "Large dark brown blotches can appear on leaves.",
+      "Lesions may have green-gray margins.",
+      "Infection can move through leaflets and petioles.",
+      "High humidity can produce pale growth on infected tissue.",
+      "Tubers may become discolored and develop rot."
+    ],
+    "advice": "Suspected late blight deserves prompt local expert confirmation because it can spread rapidly."
+  },
+  "Potato___healthy": {
+    "crop": "Potato",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious blight pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "The model does not cover every potato problem.",
+      "Continue field monitoring."
+    ],
+    "advice": "Use the prediction only as a screening aid."
+  },
+  "Raspberry___healthy": {
+    "crop": "Raspberry",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious lesion pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "Other disorders may not be represented.",
+      "Image quality affects confidence."
+    ],
+    "advice": "Continue routine scouting."
+  },
+  "Soybean___healthy": {
+    "crop": "Soybean",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious disease pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "This class does not mean all soybean diseases are absent.",
+      "Continue field scouting."
+    ],
+    "advice": "Monitor plants through changing weather and growth stages."
+  },
+  "Squash___Powdery_mildew": {
+    "crop": "Squash",
+    "disease": "Powdery mildew",
+    "symptoms": [
+      "White powdery patches can develop on leaves.",
+      "Patches may expand and merge.",
+      "Leaves can yellow as disease progresses.",
+      "Older leaves may become more affected.",
+      "Severe infection can reduce photosynthetic leaf area."
+    ],
+    "advice": "Confirm locally before treatment."
+  },
+  "Strawberry___Leaf_scorch": {
+    "crop": "Strawberry",
+    "disease": "Leaf scorch",
+    "symptoms": [
+      "Leaflets can develop dark purple to brown spots.",
+      "Spots may expand and become necrotic.",
+      "Affected tissue can resemble scorch.",
+      "Severe symptoms can reduce healthy leaf area.",
+      "Symptoms can be confused with other leaf diseases."
+    ],
+    "advice": "Use local diagnostic guidance to distinguish similar leaf spots."
+  },
+  "Strawberry___healthy": {
+    "crop": "Strawberry",
+    "disease": "Healthy",
+    "symptoms": [
+      "No strong disease pattern detected.",
+      "No obvious leaf scorch pattern is predicted.",
+      "Appearance matches the healthy class.",
+      "Other strawberry disorders may be outside the model.",
+      "Image quality affects confidence."
+    ],
+    "advice": "Continue monitoring."
+  },
+  "Tomato___Bacterial_spot": {
+    "crop": "Tomato",
+    "disease": "Bacterial spot",
+    "symptoms": [
+      "Small dark leaf spots can have yellow or light-green halos.",
+      "Fruit can develop larger dark corky spots.",
+      "Lesions can occur on young and mature tissue.",
+      "Lower leaves may be affected first.",
+      "Warm, wet weather can favor disease."
+    ],
+    "advice": "Confirm before treatment; bacterial diseases can resemble fungal leaf spots."
+  },
+  "Tomato___Early_blight": {
+    "crop": "Tomato",
+    "disease": "Early blight",
+    "symptoms": [
+      "Dark leaf spots often begin on older lower foliage.",
+      "Larger spots can show concentric target-like rings.",
+      "Yellow tissue can surround lesions.",
+      "Severe leaves may brown and drop.",
+      "Stem and fruit lesions can occur."
+    ],
+    "advice": "Compare with local extension disease guides before management."
+  },
+  "Tomato___Late_blight": {
+    "crop": "Tomato",
+    "disease": "Late blight",
+    "symptoms": [
+      "Large irregular water-soaked lesions can develop.",
+      "Lesions may become olive to brown.",
+      "Leaves and stems can rapidly turn brown.",
+      "High humidity can reveal pale growth on infected tissue.",
+      "Fruit can develop firm dark lesions."
+    ],
+    "advice": "Suspected late blight should be verified promptly because it can spread rapidly."
+  },
+  "Tomato___Leaf_Mold": {
+    "crop": "Tomato",
+    "disease": "Leaf mold",
+    "symptoms": [
+      "Yellow patches can develop on upper leaf surfaces.",
+      "Olive to brown fungal growth can occur underneath leaves.",
+      "Older leaves are often affected first.",
+      "High humidity favors disease.",
+      "Severe infection can cause leaf yellowing and drop."
+    ],
+    "advice": "Confirm with a plant pathology resource."
+  },
+  "Tomato___Septoria_leaf_spot": {
+    "crop": "Tomato",
+    "disease": "Septoria leaf spot",
+    "symptoms": [
+      "Small round spots can develop on lower leaves.",
+      "Spots may have dark margins and tan-gray centers.",
+      "Tiny dark structures can occur in spot centers.",
+      "Leaves can yellow and drop under severe disease.",
+      "High humidity favors development."
+    ],
+    "advice": "Compare with bacterial spot and early blight because early symptoms can overlap."
+  },
+  "Tomato___Spider_mites Two-spotted_spider_mite": {
+    "crop": "Tomato",
+    "disease": "Two-spotted spider mite damage",
+    "symptoms": [
+      "Fine stippling can appear on leaves.",
+      "Leaves may become yellow or bronzed.",
+      "Fine webbing may be visible in heavier infestations.",
+      "Damage is often concentrated on leaf undersides.",
+      "Hot, dry conditions can favor outbreaks."
+    ],
+    "advice": "Check the underside of leaves with a hand lens; confirm before control measures."
+  },
+  "Tomato___Target_Spot": {
+    "crop": "Tomato",
+    "disease": "Target spot",
+    "symptoms": [
+      "Circular leaf spots can develop.",
+      "Lesions may show concentric rings.",
+      "Spots can merge under severe infection.",
+      "Lower leaves may be affected first.",
+      "Fruit can develop dark sunken lesions."
+    ],
+    "advice": "Confirm locally because target spot overlaps visually with other tomato leaf diseases."
+  },
+  "Tomato___Tomato_Yellow_Leaf_Curl_Virus": {
+    "crop": "Tomato",
+    "disease": "Tomato yellow leaf curl virus",
+    "symptoms": [
+      "Leaves can curl upward.",
+      "Young leaves may become yellow.",
+      "Plants can become stunted.",
+      "Leaflets can become smaller and distorted.",
+      "Fruit production may be reduced."
+    ],
+    "advice": "Confirm suspected viral disease with local agricultural guidance; vector management may be important."
+  },
+  "Tomato___Tomato_mosaic_virus": {
+    "crop": "Tomato",
+    "disease": "Tomato mosaic virus",
+    "symptoms": [
+      "Leaves can show mottled light and dark green areas.",
+      "Leaves may become distorted.",
+      "Plants may become stunted.",
+      "Fruit can show uneven coloring or symptoms.",
+      "Symptoms can vary with cultivar and conditions."
+    ],
+    "advice": "Confirm viral symptoms because nutritional and herbicide effects can look similar."
+  }
+}

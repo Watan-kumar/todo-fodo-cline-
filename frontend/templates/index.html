@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crop Disease AI</title>
+  <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <p class="eyebrow">AI • COMPUTER VISION • AGRICULTURE</p>
+      <h1>Crop Disease Detection</h1>
+      <p>Upload a leaf image and receive an AI screening result with confidence, alternatives and symptom knowledge.</p>
+    </section>
+<section>
+  
+
+
+
+
+</section>
+    <section class="card">
+      <label class="upload">
+        <input id="file" type="file" accept="image/*">
+        <span>📷 Choose a crop/leaf image</span>
+      </label>
+      <img id="preview" class="preview hidden" alt="Preview">
+      <button id="predict">Analyze Image</button>
+      <p id="status"></p>
+    </section>
+
+    <section id="result" class="card hidden">
+      <h2 id="disease"></h2>
+      <div class="confidence" id="confidence"></div>
+      <h3>Top alternatives</h3>
+      <ul id="top3"></ul>
+      <h3>Symptoms / knowledge</h3>
+      <ul id="symptoms"></ul>
+      <p id="advice"></p>
+      <p class="warning" id="warning"></p>
+    </section>
+  </main>
+  <script src="../static/app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

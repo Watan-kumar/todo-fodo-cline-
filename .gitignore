@@ -1,0 +1,10 @@
+venv/
+Clean_Dataset/
+__pycache__/
+*.pyc
+.env
+*.h5
+*.pt
+*.pth
+*.keras
+.ipynb_checkpoints/
