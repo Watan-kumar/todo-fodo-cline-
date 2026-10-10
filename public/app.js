@@ -1,5 +1,6 @@
 import { hasLanguage, messages } from "./languages.js";
 import { createOfflineClassifier } from "./onnx-model.js";
+import { initSoilAssessment } from "./soil-assessment.js";
 
 export function initVoiceFlow({
   document = globalThis.document,
@@ -389,6 +390,7 @@ export function initVoiceFlow({
     analysisVersion += 1;
     if (photoUrl) window.URL.revokeObjectURL(photoUrl);
     photoUrl = null;
+    photoCopy.querySelector("strong").textContent = "Drop a leaf photo here";
     photoPreview.hidden = true;
     analyzeButton.disabled = true;
     diagnosisCard.hidden = true;
@@ -501,6 +503,7 @@ export function initVoiceFlow({
     updateVoiceAvailability();
     if (waitingForVoice && matchingVoice(waitingForVoice.result.language)) speak(waitingForVoice.result, waitingForVoice.hint);
   });
+  initSoilAssessment(document);
   applyLanguage();
 }
 

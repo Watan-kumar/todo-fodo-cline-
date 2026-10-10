@@ -167,6 +167,8 @@ Check the exact license of each dataset/version before redistribution. This repo
 
 The repository root also includes KhetSuno, a mobile-first installable web app. It caches its app shell and ONNX runtime for offline use. Once an ONNX model is exported and cached, leaf classification runs on the phone without a server request.
 
+The app also has an offline **Soil & crops** screening form. Enter lab/Soil Health Card values and field observations to see the recorded indicators and a broad crop shortlist based on soil group and water availability. It does not infer pH or nutrients from a photo, calculate a single soil-health score, or prescribe fertilizer. Crop options are indicative and should be checked against district, season, variety, water supply, and local soil-lab recommendations. Reference links are listed in `docs/sources.md`.
+
 Install the Node dependency and start the app:
 
 ```sh

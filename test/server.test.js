@@ -91,7 +91,9 @@ test("browser modules and editable-transcript markup are served", async () => {
   for (const path of [
     "/",
     "/app.js",
+    "/dashboard.js",
     "/languages.js",
+    "/soil-assessment.js",
     "/onnx-model.js",
     "/styles.css",
     "/sw.js",

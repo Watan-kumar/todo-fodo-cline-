@@ -231,7 +231,8 @@ for (const language of Object.keys(messages)) {
 
 test("the HTML language options and translation catalogs stay in sync", async () => {
   const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
-  const options = [...html.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
+  const languageSelect = html.match(/<select id="language"[\s\S]*?<\/select>/)?.[0] || "";
+  const options = [...languageSelect.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(options, Object.keys(messages));
   assert.match(html, /<label id="transcript-label"[^>]+for="symptoms"/);
   assert.match(html, /<textarea id="symptoms"[^>]+aria-describedby="voice-hint"/);
