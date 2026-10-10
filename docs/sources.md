@@ -56,4 +56,17 @@
 18. Penn State Extension — general agronomic soil pH guidance; crop ranges vary.
     https://extension.psu.edu/soil-acidity-and-aglime
 
+19. Government of India, PPQS — Chickpea Integrated Pest Management package; general IPM principles.
+    https://ppqs.gov.in/sites/default/files/chickpea.pdf
+
+20. Government of India, PPQS — Small-cardamom AESA/IPM package; field scouting and the limits of visual diagnosis.
+    https://ppqs.gov.in/sites/default/files/small_cardamom.pdf
+
+21. Kathir56 — Plant Disease Classifier for Tamil Nadu, model card and Apache-2.0 license metadata.
+    https://huggingface.co/Kathir56/plant-disease-tamilnadu
+
+22. Sheneman et al. — CerealPestAID, 26 cereal-pest image classifier and MIT license.
+    https://huggingface.co/sheneman/CerealPestAID
+    https://github.com/sheneman/CerealPestAID
+
 Always verify dataset licenses and source-specific usage terms before redistributing data or publishing a trained model.

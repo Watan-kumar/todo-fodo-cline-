@@ -68,7 +68,7 @@
         <label id="photo-drop" class="photo-drop" for="crop-photo">
           <input id="crop-photo" type="file" accept="image/*" capture="environment" />
           <svg class="icon upload-icon" aria-hidden="true"><use href="#icon-image"/></svg>
-          <span class="photo-copy"><strong id="scan-title">Drop a leaf photo here</strong><small>or choose from your device. Your photo stays here.</small></span>
+          <span class="photo-copy"><strong id="scan-title">Drop a leaf photo here</strong><small>Leaf images only for disease checks. Your photo stays here.</small></span>
         </label>
         <button id="scan-trigger" class="scan-trigger" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg><span>Scan a leaf<small lang="hi">पत्ता स्कैन करें</small></span></button>
         <p class="scan-footnote">A clear, well-lit close-up works best. Choose a photo, then run the leaf check below.</p>
@@ -91,15 +91,30 @@
           <div class="leaf-result-copy">
             <div class="empty-diagnosis"><p class="eyebrow">A SMALL STEP FOR YOUR CROP</p><h3>Your next leaf check <br />starts here.</h3><p>Add a photo to look for signs of crop disease with the on-device model.</p><ul class="scan-tips"><li>One leaf, clearly in focus</li><li>Natural light, simple background</li><li>No photo uploads required</li></ul></div>
             <section id="diagnosis" class="diagnosis-card" aria-live="polite" hidden>
-              <p class="diagnosis-kicker">ON-DEVICE MODEL RESULT</p>
+              <p class="diagnosis-kicker">OFFLINE LEAF SCREENING</p>
               <h3 id="diagnosis-title"></h3>
               <h4>Other possible matches</h4>
               <ol id="diagnosis-alternatives"></ol>
-              <p class="diagnosis-note">The percentage is model confidence, not the area of leaf affected. This is an AI suggestion, not a confirmed diagnosis. Ask a local agriculture worker before treating the crop.</p>
+              <p id="diagnosis-advice" class="diagnosis-note"></p>
+              <p class="diagnosis-note">This PlantVillage-trained model is a screening aid, not a field-validated diagnosis. Its score is not disease severity. Ask a local agriculture worker before treating the crop.</p>
             </section>
             <div class="model-actions">
               <button id="analyze-button" class="analyze-button" type="button" disabled>Check this leaf offline <span aria-hidden="true">→</span></button>
-              <p id="model-status" role="status" aria-live="polite">The offline model will be ready after it is exported and installed.</p>
+              <p id="model-status" role="status" aria-live="polite">The disease model will be installed with the app. Open it once online to cache both models for offline use.</p>
+            </div>
+            <div class="pest-actions">
+              <label class="pest-photo-label" for="pest-photo">
+                <span><strong>Have a cereal-pest photo?</strong><small>Choose a close-up of one insect. This model covers 26 cereal-pest categories.</small></span>
+                <input id="pest-photo" type="file" accept="image/*" capture="environment" />
+              </label>
+              <button id="analyze-pest" class="analyze-button" type="button" disabled>Check this insect offline <span aria-hidden="true">→</span></button>
+              <p id="pest-model-status" role="status" aria-live="polite">Pest results are a class guess, not insect counts or a treatment threshold.</p>
+              <section id="pest-diagnosis" class="diagnosis-card" aria-live="polite" hidden>
+                <p class="diagnosis-kicker">OFFLINE PEST SCREENING</p>
+                <h3 id="pest-diagnosis-title"></h3>
+                <p id="pest-diagnosis-advice" class="diagnosis-note"></p>
+                <p class="diagnosis-note">CerealPestAID is trained for cereal pests. The classifier does not draw insect boxes or count an infestation.</p>
+              </section>
             </div>
           </div>
         </div>
@@ -148,7 +163,7 @@
           <textarea id="symptoms" rows="3" aria-describedby="voice-hint" placeholder="Your words will appear here…"></textarea>
         </div>
 
-        <p class="intake-note">Have a concern? Add a leaf photo above and describe it here. Sending a query requires a connection; it is not a diagnosis.</p>
+        <p class="intake-note">Have a concern? Run an offline leaf or insect photo check above, then describe what you see. Sending a text query requires a connection and does not create a diagnosis.</p>
         <button id="submit-button" class="submit-button" type="button">
           <span>Send my query</span><span aria-hidden="true">↗</span>
         </button>

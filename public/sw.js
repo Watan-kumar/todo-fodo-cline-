@@ -1,9 +1,10 @@
-const CACHE_NAME = "khetsuno-v3";
+const CACHE_NAME = "khetsuno-v4";
 const APP_ASSETS = [
   "/",
   "/app.js",
   "/dashboard.js",
   "/languages.js",
+  "/local-guidance.js",
   "/soil-assessment.js",
   "/onnx-model.js",
   "/styles.css",
@@ -16,8 +17,10 @@ const OPTIONAL_ASSETS = [
   "/vendor/ort.wasm.min.js",
   "/vendor/ort-wasm-simd-threaded.wasm",
   "/vendor/ort-wasm-simd-threaded.mjs",
-  "/models/crop_disease.onnx",
-  "/models/class_names.json",
+  "/models/plant-disease-tamilnadu.onnx",
+  "/models/plant-disease-tamilnadu-labels.json",
+  "/models/cerealpestaid-mobilenetv3.onnx",
+  "/models/cerealpestaid-labels.json",
 ];
 
 self.addEventListener("install", (event) => {

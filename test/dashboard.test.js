@@ -83,6 +83,6 @@ test("dashboard markup has unique IDs, working anchors and offline-cached enhanc
   assert.equal(new Set(ids).size, ids.length);
   for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) assert.ok(ids.includes(target), target);
   assert.match(worker, /"\/dashboard\.js"/);
-  assert.match(html, /model confidence, not the area of leaf affected/);
+  assert.match(html, /Its score is not disease severity/);
   assert.match(html, /Your next leaf check\s+<br\s*\/>starts here\./);
 });

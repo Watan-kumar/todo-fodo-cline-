@@ -1,8 +1,8 @@
 # KhetSuno
 
-KhetSuno is a mobile-first crop-care web app prototype. It supports voice or typed intake in Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi; an installable dashboard; and a rule-based soil assessment. A crop-disease ONNX model can run locally in the browser when its model files are supplied.
+KhetSuno is a mobile-first crop-care web app with voice or typed intake in Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi; an installable dashboard; and a rule-based soil assessment. It includes separate ONNX image classifiers for leaf disease and cereal pests, with translated local guidance spoken through the voice assistant when a matching device voice is available.
 
-> **Current limitation:** No trained disease model is included or connected in this checkout. Until a compatible ONNX model and label file are generated and installed, photo diagnosis is unavailable. The intake endpoint returns an explicit localized placeholder; it does not analyze symptoms or photos. Do not use this prototype as an agronomic diagnosis.
+> **Limitations:** Photo models provide screening signals, not field-validated diagnoses. They do not count pests or measure disease severity, and their performance may differ on local field photos. Text intake only acknowledges the message; it does not diagnose symptoms or analyze photos. Confirm crop decisions with a local agricultural expert.
 
 ## Quick Start
 
@@ -21,38 +21,34 @@ npm test
 
 For phone installation and service-worker support, serve the app over HTTPS. Localhost is supported for development. Browser speech recognition and speech playback depend on browser and device language support.
 
+## Offline Photo Checks
+
+- The leaf classifier is a MobileNetV2 model with 38 PlantVillage labels.
+- The cereal-pest classifier is a MobileNetV3 model with 26 labels. Use it for one-insect close-ups; it does not return boxes or counts.
+- Both models run in the browser with ONNX Runtime Web. Photos are not uploaded. Open the app online once so the service worker can cache its runtime and model files for later offline use.
+- Model scores are not severity measurements or confirmed diagnoses. The source-linked local IPM guide recommends conservative scouting and local confirmation; it does not prescribe pesticides or doses.
+
+See [docs/model-sources.md](docs/model-sources.md) for licenses, model scope, preprocessing, and known validation limitations. Soil screening is based on entered lab/Soil Health Card values and field observations; it does not assess soil from a photo or prescribe fertilizer.
+
 ## Architecture
 
-- `server.js` serves the static app and its ONNX Runtime Web assets. Its `/api/health` and `/api/intake` routes report service status and acknowledge localized intake; `/api/tts` can generate local macOS speech for supported system voices. None of these routes performs disease inference.
-- `public/app.js`, `public/languages.js`, and `public/onnx-model.js` implement the voice/text flow, localized messages, and optional in-browser image classification.
-- `public/dashboard.js` adds dashboard interactions; `public/soil-assessment.js` provides a rule-based soil questionnaire and broad crop suggestions.
-- `public/sw.js` caches the app shell and optional model files for offline use after an initial visit.
-- `ml/` contains experimental training, evaluation, and ONNX export scripts. Dataset and model artifacts are local and are not committed.
-- `docs/` records research and data references; `test/` contains Node.js tests.
-- `app.py` is a legacy Flask scaffold, not the app's startup path. It refers to model/template assets that are not included in this checkout.
+- `server.js` serves the PWA and localized intake endpoints. `/api/intake` acknowledges text; it does not perform disease inference.
+- `public/app.js`, `public/languages.js`, and `public/onnx-model.js` implement the voice/text flow, localized messages, and on-device image classification.
+- `public/local-guidance.js` maps image signals to translated, conservative next steps.
+- `public/dashboard.js`, `public/soil-assessment.js`, and `public/sw.js` provide dashboard interactions, rule-based soil screening, and offline asset caching.
+- `public/models/` contains the bundled ONNX weights, ordered labels, and model license notices.
+- `tools/fetch_mobile_models.py` rebuilds/fetches the public model assets; `ml/` contains separate experimental training and evaluation scripts.
+- `docs/` records research and model references; `test/` contains Node.js tests.
 
-See [KhetSuno-README.md](KhetSuno-README.md) for the voice workflow and optional model setup. Each source folder has a README with its responsibilities and commands.
-
-## Optional Model Setup
-
-The current training script expects image folders under:
-
-```text
-Clean_Dataset/Plant Diseases Dataset(Augmented)/train/<class-name>/
-```
-
-The dataset is not included. The experimental trainer takes only a small subset of batches for two epochs, so it is a smoke-test pipeline, not evidence of field accuracy. To install the Python dependencies and generate the optional model:
+## Refresh the Bundled Models
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python ml/train.py
-python ml/export_onnx.py
+python -m pip install -r tools/model-export-requirements.txt
+python tools/fetch_mobile_models.py
 ```
 
-The exporter writes `public/models/crop_disease.onnx` and `public/models/class_names.json`. Keep generated model files local unless their training-data and model licenses permit redistribution. Review [ml/README.md](ml/README.md) before training; the evaluation script currently expects a separate 224x224 model/JSON-label layout.
+This exports the pinned leaf-disease checkpoint and fetches the pinned cereal-pest ONNX model, labels, and license notices.
 
 ## License and Data
 
-There is no root `LICENSE` file in this repository, so no project-wide reuse license is declared. Do not assume permission to reuse or redistribute the project code; ask the project owner to choose and add a license. Third-party dependencies, datasets, pretrained weights, and assets are subject to their own terms. Dataset references and attribution notes are in [docs/sources.md](docs/sources.md); dataset images and model weights are not included here.
+There is no root `LICENSE` file, so no project-wide reuse license is declared. Do not assume permission to reuse or redistribute the project code. The bundled model assets have separate upstream licenses, with notices in `public/models/licenses/`; training datasets and checkpoints are not included. Dataset references and attribution notes are in [docs/sources.md](docs/sources.md).

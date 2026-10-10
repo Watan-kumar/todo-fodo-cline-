@@ -1,6 +1,6 @@
 # KhetSuno mobile crop-care app
 
-KhetSuno is a mobile-first installable web app with Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi voice/text intake. Crop photo classification runs locally in the browser with ONNX Runtime Web, so an exported model can work when the phone is offline. Photos are never sent to the server.
+KhetSuno is a mobile-first installable web app with Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi voice/text intake. It includes separate, image-based ONNX classifiers for leaf disease and cereal pests, plus a source-linked local IPM guide. Once the app and model files have been cached, photo inference and the matching voice-assistant guidance work offline; photos are never sent to the server.
 
 ## Run
 
@@ -13,24 +13,24 @@ npm start
 
 Open http://localhost:4173 in a browser. For phone testing or installation, deploy over HTTPS. Service workers are restricted to secure contexts; localhost is also supported for development.
 
-## Export the on-device model
+## Refresh the bundled model files
 
-Train the compact model using the configured dataset, then convert it to ONNX:
+Install export dependencies and fetch/export the public models:
 
 ```sh
-python ml/train.py
-python ml/export_onnx.py
+python -m pip install -r tools/model-export-requirements.txt
+python tools/fetch_mobile_models.py
 ```
 
-The exporter creates `public/models/crop_disease.onnx` and `public/models/class_names.json`. The training data and trained model are not committed, so this checkout cannot classify leaves until those two files are generated. Keep the model input at 48×48 RGB to match the current app preprocessing.
+This creates the disease and pest ONNX files, ordered labels, and upstream license notices under `public/models/`. See [model-sources.md](docs/model-sources.md) for model scope, licenses, preprocessing, and limitations.
 
-Open the app once while connected after deployment. The service worker caches the app shell, ONNX Runtime Web, and available model files. Later photo inference runs on the phone and does not call a prediction API. Browser voice recognition and speech playback still depend on the phone's browser and installed language services.
+Use the leaf input only for leaf-disease screening and the separate insect input for a close-up cereal-pest photo. The first online visit lets the service worker cache both models and the ONNX runtime; later inference and IPM guidance run locally. Browser voice recognition and speech playback still depend on the phone's browser and installed language services.
 
 ## Language-consistent voice flow
 
 - Choose Hindi, Telugu, Tamil, Kannada, Malayalam, or Marathi before speaking. Recognition uses that selected locale; it never automatically switches to another language.
-- Recognized words appear in an editable text area. Review or correct them, add a photo preview, and explicitly send the query. Recognition does not submit automatically. Editing stops recognition so late speech results cannot overwrite corrections.
-- The intake endpoint returns the selected language alongside its localized placeholder. The displayed message and spoken message are the same text. This intake endpoint is separate from local photo inference and does not perform crop analysis.
+- Recognized words appear in an editable text area. Review or correct them before requesting a response. Recognition does not submit automatically. Editing stops recognition so late speech results cannot overwrite corrections.
+- A local photo signal produces a translated, conservative guide message in the voice assistant; the same message is spoken when a matching-language voice is available. With no photo signal, text intake only returns a reminder to run an on-device photo check; it does not diagnose symptoms.
 - Playback requires an installed/browser-provided voice in the selected language (exact locale preferred, otherwise the same base language). An unrelated/default voice is never used. If voices load later, playback is retried only for the current response.
 - If recognition is unavailable or fails, a localized message offers typing or retrying; language-specific recognition errors also offer explicitly selecting another language. Browsers do not reliably expose recognition language availability in advance, so failures are handled when reported by the service.
 - If playback is unavailable or fails, the response remains readable and a localized message offers text, voice installation, or retrying with **Hear this message**. There is no automatic translation or language fallback.
@@ -62,6 +62,6 @@ Tests use Node's built-in test runner with no extra packages. They cover all six
 
 ## Next integration steps
 
-1. Train and validate the model with field images; the current starter model is not a field-validated diagnosis system.
-2. Replace browser speech recognition and synthesis with a selected Indic ASR/TTS provider only if network-dependent voice services are acceptable.
-3. Add a source-linked, language-specific advisory dataset for the initial supported crops.
+1. Validate or fine-tune both models on locally collected field images before using them for real crop decisions.
+2. Expand crop-specific advice only from local agricultural extension guidance and keep pesticide thresholds/doses tied to crop, region, and current label directions.
+3. Replace browser speech recognition and synthesis with an Indic ASR/TTS provider only if network-dependent voice services are acceptable.

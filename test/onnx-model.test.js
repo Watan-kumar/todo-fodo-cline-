@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createOfflineClassifier, rgbaToRgbTensor, topPredictions } from "../public/onnx-model.js";
+import { createOfflineClassifier, createPestClassifier, logitsToProbabilities, topPredictions } from "../public/onnx-model.js";
 
-test("RGBA pixels become RGB float inputs without normalization", () => {
-  const rgba = new Uint8ClampedArray(48 * 48 * 4);
-  rgba.set([12, 34, 56, 255]);
-  const rgb = rgbaToRgbTensor(rgba);
-
-  assert.equal(rgb.length, 48 * 48 * 3);
-  assert.deepEqual(Array.from(rgb.slice(0, 3)), [12, 34, 56]);
+test("logits become stable probabilities", () => {
+  const probabilities = logitsToProbabilities([1000, 1001]);
+  assert.ok(Math.abs(probabilities[0] - 0.2689414) < 1e-6);
+  assert.ok(Math.abs(probabilities[1] - 0.7310586) < 1e-6);
+  assert.throws(() => logitsToProbabilities([Number.NaN]), /invalid prediction scores/i);
 });
 
 test("top predictions pair sorted scores with their matching labels", () => {
@@ -20,75 +18,95 @@ test("top predictions pair sorted scores with their matching labels", () => {
   assert.throws(() => topPredictions([0.2], ["a", "b"]), /does not match/i);
 });
 
-test("classifier loads a local ONNX model once and runs image inference on-device", async () => {
-  let sessionCreations = 0;
-  let runCount = 0;
-  let receivedTensor;
-  class Tensor {
-    constructor(type, data, dims) {
-      this.type = type;
-      this.data = data;
-      this.dims = dims;
+for (const [name, createClassifier, modelPath, labelsPath, imageSize] of [
+  ["leaf disease", createOfflineClassifier, "/models/plant-disease-tamilnadu.onnx", "/models/plant-disease-tamilnadu-labels.json", 224],
+  ["cereal pest", createPestClassifier, "/models/cerealpestaid-mobilenetv3.onnx", "/models/cerealpestaid-labels.json", 224],
+]) {
+  test(`${name} classifier loads its local ONNX model once and runs on-device`, async () => {
+    let sessionCreations = 0;
+    let runCount = 0;
+    let receivedTensor;
+    class Tensor {
+      constructor(type, data, dims) {
+        this.type = type;
+        this.data = data;
+        this.dims = dims;
+      }
     }
-  }
-  const runtime = {
-    env: { wasm: {} },
-    Tensor,
-    InferenceSession: {
-      async create(path, options) {
-        sessionCreations += 1;
-        assert.equal(path, "/models/crop_disease.onnx");
-        assert.deepEqual(options, { executionProviders: ["wasm"] });
-        return {
-          inputNames: ["leaf"],
-          outputNames: ["scores"],
-          async run(inputs) {
-            runCount += 1;
-            receivedTensor = inputs.leaf;
-            return { scores: { data: Float32Array.from([0.2, 0.8]) } };
-          },
-        };
-      },
-    },
-  };
-  let labelFetches = 0;
-  const fetchImpl = async (path) => {
-    labelFetches += 1;
-    assert.equal(path, "/models/class_names.json");
-    return { ok: true, json: async () => ["healthy", "rust"] };
-  };
-  const rgba = new Uint8ClampedArray(48 * 48 * 4);
-  rgba.set([12, 34, 56, 255]);
-  const documentRef = {
-    createElement() {
-      return {
-        width: 0,
-        height: 0,
-        getContext() {
+    const runtime = {
+      env: { wasm: {} },
+      Tensor,
+      InferenceSession: {
+        async create(path, options) {
+          sessionCreations += 1;
+          assert.equal(path, modelPath);
+          assert.deepEqual(options, { executionProviders: ["wasm"] });
           return {
-            drawImage() {},
-            getImageData() { return { data: rgba }; },
+            inputNames: ["pixel_values"],
+            outputNames: ["logits"],
+            async run(inputs) {
+              runCount += 1;
+              receivedTensor = inputs.pixel_values;
+              return { logits: { data: Float32Array.from([0, 1]) } };
+            },
           };
         },
-      };
-    },
-  };
-  const classifier = createOfflineClassifier({
-    runtime,
-    fetchImpl,
-    documentRef,
-    bitmapFactory: async () => ({ close() {} }),
-  });
+      },
+    };
+    let labelFetches = 0;
+    const fetchImpl = async (path) => {
+      labelFetches += 1;
+      assert.equal(path, labelsPath);
+      return { ok: true, json: async () => ["healthy", "rust"] };
+    };
+    let canvas;
+    let drawArguments;
+    const documentRef = {
+      createElement() {
+        canvas = {
+          width: 0,
+          height: 0,
+          getContext() {
+            return {
+              drawImage(...arguments_) {
+                drawArguments = arguments_;
+              },
+              getImageData() {
+                const rgba = new Uint8ClampedArray(imageSize * imageSize * 4);
+                rgba.set([12, 34, 56, 255]);
+                return { data: rgba };
+              },
+            };
+          },
+        };
+        return canvas;
+      },
+    };
+    const classifier = createClassifier({
+      runtime,
+      fetchImpl,
+      documentRef,
+      bitmapFactory: async () => ({ width: 600, height: 400, close() {} }),
+    });
 
-  const predictions = await classifier({ name: "leaf.jpg" });
-  assert.deepEqual(predictions.map(({ label }) => label), ["rust", "healthy"]);
-  assert.ok(Math.abs(predictions[0].confidence - 0.8) < 1e-6);
-  assert.ok(Math.abs(predictions[1].confidence - 0.2) < 1e-6);
-  await classifier({ name: "leaf-again.jpg" });
-  assert.equal(sessionCreations, 1);
-  assert.equal(labelFetches, 1);
-  assert.equal(runCount, 2);
-  assert.deepEqual(receivedTensor.dims, [1, 48, 48, 3]);
-  assert.deepEqual(Array.from(receivedTensor.data.slice(0, 3)), [12, 34, 56]);
-  assert.equal(runtime.env.wasm.wasmPaths, "/vendor/");
-});
+    const predictions = await classifier({ name: "crop.jpg" });
+    assert.deepEqual(predictions.map(({ label }) => label), ["rust", "healthy"]);
+    assert.ok(Math.abs(predictions[0].confidence - 0.7310586) < 1e-6);
+    assert.ok(Math.abs(predictions[1].confidence - 0.2689414) < 1e-6);
+    await classifier({ name: "crop-again.jpg" });
+    assert.equal(sessionCreations, 1);
+    assert.equal(labelFetches, 1);
+    assert.equal(runCount, 2);
+    assert.deepEqual(receivedTensor.dims, [1, 3, imageSize, imageSize]);
+    assert.deepEqual([drawArguments[0].width, drawArguments[0].height], [600, 400]);
+    assert.deepEqual(drawArguments.slice(1), name === "leaf disease"
+      ? [125, 25, 350, 350, 0, 0, 224, 224]
+      : [0, 0, 600, 400, 0, 0, 224, 224]);
+    const expectedFirstValue = name === "leaf disease"
+      ? (12 / 255 - 0.5) / 0.5
+      : (12 / 255 - 0.485) / 0.229;
+    assert.ok(Math.abs(receivedTensor.data[0] - expectedFirstValue) < 1e-6);
+    assert.equal(canvas.width, imageSize);
+    assert.equal(runtime.env.wasm.wasmPaths, "/vendor/");
+  });
+}

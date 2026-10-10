@@ -1,5 +1,6 @@
 import { hasLanguage, messages } from "./languages.js";
-import { createOfflineClassifier } from "./onnx-model.js";
+import { createOfflineClassifier, createPestClassifier } from "./onnx-model.js";
+import { getLocalGuidance } from "./local-guidance.js";
 import { initSoilAssessment } from "./soil-assessment.js";
 
 export function initVoiceFlow({
@@ -7,6 +8,7 @@ export function initVoiceFlow({
   window = globalThis.window,
   fetch = globalThis.fetch,
   createClassifier = createOfflineClassifier,
+  createPest = createPestClassifier,
 } = {}) {
   const languageSelect = document.querySelector("#language");
   const recordButton = document.querySelector("#record-button");
@@ -15,6 +17,7 @@ export function initVoiceFlow({
   const symptomsField = document.querySelector("#symptoms");
   const transcriptLabel = document.querySelector("#transcript-label");
   const photoInput = document.querySelector("#crop-photo");
+  const pestPhotoInput = document.querySelector("#pest-photo");
   const photoPreview = document.querySelector("#photo-preview");
   const photoCopy = document.querySelector(".photo-copy");
   const analyzeButton = document.querySelector("#analyze-button");
@@ -22,6 +25,12 @@ export function initVoiceFlow({
   const diagnosisCard = document.querySelector("#diagnosis");
   const diagnosisTitle = document.querySelector("#diagnosis-title");
   const diagnosisAlternatives = document.querySelector("#diagnosis-alternatives");
+  const diagnosisAdvice = document.querySelector("#diagnosis-advice");
+  const analyzePestButton = document.querySelector("#analyze-pest");
+  const pestModelStatus = document.querySelector("#pest-model-status");
+  const pestDiagnosis = document.querySelector("#pest-diagnosis");
+  const pestDiagnosisTitle = document.querySelector("#pest-diagnosis-title");
+  const pestDiagnosisAdvice = document.querySelector("#pest-diagnosis-advice");
   const connectionStatus = document.querySelector("#connection-status");
   const submitButton = document.querySelector("#submit-button");
   const resultCard = document.querySelector("#result");
@@ -48,7 +57,23 @@ export function initVoiceFlow({
   let activeAudio = null;
   let activeAudioUrl = null;
   let classifyImage = null;
+  let classifyPest = null;
   let analysisVersion = 0;
+  let pestAnalysisVersion = 0;
+  const localSignals = { disease: null, pest: null };
+
+  function activeGuidance(locale = language) {
+    return Object.entries(localSignals)
+      .filter(([, prediction]) => prediction)
+      .map(([source, prediction]) => getLocalGuidance({ source, ...prediction, language: locale }).text)
+      .join(" ");
+  }
+
+  function showSignalGuidance(locale = language) {
+    const text = activeGuidance(locale);
+    if (text) showResult(text, locale);
+    return Boolean(text);
+  }
 
   function updateConnectionStatus() {
     const online = window.navigator?.onLine !== false;
@@ -388,6 +413,7 @@ export function initVoiceFlow({
 
   photoInput.addEventListener("change", () => {
     analysisVersion += 1;
+    localSignals.disease = null;
     if (photoUrl) window.URL.revokeObjectURL(photoUrl);
     photoUrl = null;
     photoCopy.querySelector("strong").textContent = "Drop a leaf photo here";
@@ -396,6 +422,8 @@ export function initVoiceFlow({
     diagnosisCard.hidden = true;
     diagnosisTitle.textContent = "";
     diagnosisAlternatives.replaceChildren();
+    diagnosisAdvice.textContent = "";
+    clearResult();
     const file = photoInput.files?.[0];
     if (!file) {
       modelStatus.textContent = "Choose a leaf photo to begin an offline check.";
@@ -413,6 +441,22 @@ export function initVoiceFlow({
     photoCopy.querySelector("strong").textContent = file.name;
     analyzeButton.disabled = false;
     modelStatus.textContent = "The photo stays on this phone. Check the leaf whenever you are ready.";
+  });
+
+  pestPhotoInput.addEventListener("change", () => {
+    pestAnalysisVersion += 1;
+    localSignals.pest = null;
+    pestDiagnosis.hidden = true;
+    pestDiagnosisTitle.textContent = "";
+    pestDiagnosisAdvice.textContent = "";
+    clearResult();
+    const file = pestPhotoInput.files?.[0];
+    analyzePestButton.disabled = !file || !file.type.startsWith("image/");
+    pestModelStatus.textContent = file && !file.type.startsWith("image/")
+      ? "Choose a supported image of one cereal insect."
+      : file
+        ? `${file.name} is selected. The photo stays on this phone.`
+        : "Pest results are a class guess, not insect counts or a treatment threshold.";
   });
 
   analyzeButton.addEventListener("click", async () => {
@@ -435,8 +479,12 @@ export function initVoiceFlow({
         item.textContent = `${readableName(prediction.label)} · ${Math.round(prediction.confidence * 100)}%`;
         return item;
       }));
+      const advice = getLocalGuidance({ source: "disease", label: best.label, confidence: best.confidence, language });
+      localSignals.disease = { label: best.label, confidence: best.confidence };
+      diagnosisAdvice.textContent = advice.text;
       diagnosisCard.hidden = false;
-      modelStatus.textContent = "Checked on this phone. The photo was not uploaded.";
+      modelStatus.textContent = "Checked on this phone. The photo was not uploaded. Guidance is available in the voice assistant below.";
+      showSignalGuidance();
     } catch (error) {
       if (requestVersion === analysisVersion) {
         modelStatus.textContent = error instanceof Error
@@ -448,13 +496,48 @@ export function initVoiceFlow({
     }
   });
 
+  analyzePestButton.addEventListener("click", async () => {
+    const file = pestPhotoInput.files?.[0];
+    if (!file || analyzePestButton.disabled) return;
+
+    const requestVersion = pestAnalysisVersion;
+    analyzePestButton.disabled = true;
+    pestDiagnosis.hidden = true;
+    pestModelStatus.textContent = "Loading the offline pest model and checking the photo…";
+    try {
+      classifyPest ??= createPest();
+      const [best] = await classifyPest(file);
+      if (requestVersion !== pestAnalysisVersion) return;
+      const advice = getLocalGuidance({ source: "pest", label: best.label, confidence: best.confidence, language });
+      localSignals.pest = { label: best.label, confidence: best.confidence };
+      pestDiagnosisTitle.textContent = `${best.label.replaceAll("_", " ")} · ${Math.round(best.confidence * 100)}%`;
+      pestDiagnosisAdvice.textContent = advice.text;
+      pestDiagnosis.hidden = false;
+      pestModelStatus.textContent = "Checked on this phone. The photo was not uploaded. Guidance is available in the voice assistant below.";
+      showSignalGuidance();
+    } catch (error) {
+      if (requestVersion === pestAnalysisVersion) {
+        pestModelStatus.textContent = error instanceof Error
+          ? error.message
+          : "The offline pest model could not check this photo.";
+      }
+    } finally {
+      if (requestVersion === pestAnalysisVersion) analyzePestButton.disabled = false;
+    }
+  });
+
   submitButton.addEventListener("click", async () => {
     if (recognitionSession || pendingRequest) return;
     const requestLanguage = language;
     const copy = messages[requestLanguage];
     const symptoms = symptomsField.value.trim();
-    if (!symptoms || !photoInput.files?.length) {
+    if (!symptoms || (!photoInput.files?.length && !pestPhotoInput.files?.length)) {
       showResult(copy.empty, requestLanguage);
+      return;
+    }
+
+    if (activeGuidance(requestLanguage)) {
+      showSignalGuidance(requestLanguage);
       return;
     }
 

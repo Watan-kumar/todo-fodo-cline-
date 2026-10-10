@@ -43,6 +43,7 @@ function setup({
   voices,
   fetch: fetchOverride,
   createClassifier,
+  createPest,
   startError,
   speakError,
 } = {}) {
@@ -105,7 +106,7 @@ function setup({
     const { language: locale } = JSON.parse(options.body);
     return response({ received: true, diseaseModelConnected: false, language: locale, message: messages[locale].ready });
   };
-  initVoiceFlow({ document, window, fetch, createClassifier });
+  initVoiceFlow({ document, window, fetch, createClassifier, createPest });
   return {
     get, recognizers, speech, requests, window, timers, audios,
     fireTimers: () => {
@@ -165,6 +166,33 @@ test("selected leaf photos are classified locally without sending a request", as
   assert.match(app.get("#diagnosis-title").textContent, /Tomato · Late blight · 76%/);
   assert.equal(app.get("#diagnosis-alternatives").childList.length, 2);
   assert.match(app.get("#model-status").textContent, /not uploaded/i);
+  assert.match(app.get("#diagnosis-advice").textContent, /गीले पौधों को न छुएँ/);
+  assert.match(app.get("#result-message").textContent, /स्थानीय कृषि अधिकारी से पुष्टि करें/);
+  assert.equal(app.speech.spoken.at(-1).lang, "hi-IN");
+
+  app.get("#symptoms").value = queries["hi-IN"][1];
+  await app.get("#symptoms").emit("input");
+  await app.get("#submit-button").emit("click");
+  assert.equal(app.requests.length, 0, "the scanned signal uses the local guide without a network request");
+  assert.match(app.get("#result-message").textContent, /सलाह के बिना छिड़काव न करें/);
+  assert.equal(app.speech.spoken.at(-1).lang, "hi-IN");
+});
+
+test("pest scan returns translated local advice in the voice assistant", async () => {
+  const app = setup({
+    language: "mr-IN",
+    createPest: () => async () => [{ label: "predators", confidence: 0.9 }],
+  });
+  app.get("#pest-photo").files = [{ name: "insect.jpg", type: "image/jpeg" }];
+  await app.get("#pest-photo").emit("change");
+  await app.get("#analyze-pest").emit("click");
+
+  assert.equal(app.get("#pest-diagnosis").hidden, false);
+  assert.match(app.get("#pest-diagnosis-title").textContent, /predators · 90%/);
+  assert.match(app.get("#pest-diagnosis-advice").textContent, /हा उपयुक्त किंवा सामान्य कीटक/);
+  assert.match(app.get("#result-message").textContent, /त्याला मारू नका/);
+  assert.equal(app.speech.spoken.at(-1).lang, "mr-IN");
+  assert.equal(app.requests.length, 0);
 });
 
 const queries = {
