@@ -9,7 +9,9 @@ import { hasLanguage, messages } from "./public/languages.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = resolve(root, "public");
+const runtimeDir = resolve(root, "node_modules", "onnxruntime-web", "dist");
 const port = Number(process.env.PORT || 4173);
+const host = process.env.HOST || "0.0.0.0";
 const runFile = promisify(execFile);
 const localVoices = {
   "hi-IN": "Lekha",
@@ -21,8 +23,12 @@ const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".onnx": "application/octet-stream",
   ".svg": "image/svg+xml",
+  ".wasm": "application/wasm",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 
 function sendJson(response, status, payload) {
@@ -113,8 +119,16 @@ async function handleRequest(request, response) {
   }
 
   const requestedPath = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
-  const filePath = resolve(publicDir, `.${requestedPath}`);
-  if (!filePath.startsWith(`${publicDir}${sep}`)) {
+  const runtimeFiles = new Set([
+    "/vendor/ort.wasm.min.js",
+    "/vendor/ort-wasm-simd-threaded.wasm",
+    "/vendor/ort-wasm-simd-threaded.mjs",
+  ]);
+  const filePath = runtimeFiles.has(requestedPath)
+    ? resolve(runtimeDir, requestedPath.split("/").at(-1))
+    : resolve(publicDir, `.${requestedPath}`);
+  const allowedRoot = runtimeFiles.has(requestedPath) ? runtimeDir : publicDir;
+  if (!filePath.startsWith(`${allowedRoot}${sep}`)) {
     response.writeHead(403).end("Forbidden");
     return;
   }
@@ -138,7 +152,7 @@ export function createAppServer() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  createAppServer().listen(port, "127.0.0.1", () => {
+  createAppServer().listen(port, host, () => {
     console.log(`KhetSuno prototype running at http://localhost:${port}`);
   });
 }

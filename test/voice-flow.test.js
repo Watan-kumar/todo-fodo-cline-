@@ -31,15 +31,28 @@ class Element {
     if (!this.children.has(selector)) this.children.set(selector, new Element());
     return this.children.get(selector);
   }
+  replaceChildren(...children) { this.childList = children; }
 }
 
-function setup({ language = "hi-IN", recognition = true, prefixed = false, synthesis = true, nativeAudio = false, voices, fetch: fetchOverride, startError, speakError } = {}) {
+function setup({
+  language = "hi-IN",
+  recognition = true,
+  prefixed = false,
+  synthesis = true,
+  nativeAudio = false,
+  voices,
+  fetch: fetchOverride,
+  createClassifier,
+  startError,
+  speakError,
+} = {}) {
   const elements = new Map();
   const document = {
     querySelector(selector) {
       if (!elements.has(selector)) elements.set(selector, new Element());
       return elements.get(selector);
     },
+    createElement() { return new Element(); },
   };
   const get = (selector) => document.querySelector(selector);
   get("#language").value = language;
@@ -92,7 +105,7 @@ function setup({ language = "hi-IN", recognition = true, prefixed = false, synth
     const { language: locale } = JSON.parse(options.body);
     return response({ received: true, diseaseModelConnected: false, language: locale, message: messages[locale].ready });
   };
-  initVoiceFlow({ document, window, fetch });
+  initVoiceFlow({ document, window, fetch, createClassifier });
   return {
     get, recognizers, speech, requests, window, timers, audios,
     fireTimers: () => {
@@ -122,6 +135,37 @@ function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+
+test("selected leaf photos are classified locally without sending a request", async () => {
+  const photo = { name: "leaf.png", type: "image/png" };
+  let classifiedPhoto;
+  let loads = 0;
+  const app = setup({
+    createClassifier: () => {
+      loads += 1;
+      return async (file) => {
+        classifiedPhoto = file;
+        return [
+          { label: "Tomato___Late_blight", confidence: 0.76 },
+          { label: "Tomato___healthy", confidence: 0.18 },
+          { label: "Tomato___Early_blight", confidence: 0.06 },
+        ];
+      };
+    },
+  });
+  app.get("#crop-photo").files = [photo];
+  await app.get("#crop-photo").emit("change");
+  assert.equal(app.get("#analyze-button").disabled, false);
+  await app.get("#analyze-button").emit("click");
+
+  assert.equal(loads, 1);
+  assert.equal(classifiedPhoto, photo);
+  assert.equal(app.requests.length, 0);
+  assert.equal(app.get("#diagnosis").hidden, false);
+  assert.match(app.get("#diagnosis-title").textContent, /Tomato · Late blight · 76%/);
+  assert.equal(app.get("#diagnosis-alternatives").childList.length, 2);
+  assert.match(app.get("#model-status").textContent, /not uploaded/i);
+});
 
 const queries = {
   "hi-IN": ["टमाटर के पत्ते", "टमाटर के पत्तों पर पीले धब्बे हैं।"],

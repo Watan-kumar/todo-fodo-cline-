@@ -15,9 +15,7 @@ A clean, modular college-project implementation for **image-based crop disease c
 
 ## Model choice
 
-The training pipeline uses **MobileNetV3Large** with ImageNet transfer learning. This is a practical choice for a student project because it provides a strong accuracy/size trade-off and can later be exported to TensorFlow Lite for edge/mobile deployment.
-
-The project is organized so you can swap the backbone for EfficientNet, ConvNeXt, or another architecture without rewriting the website.
+The current training script uses a small 48×48 convolutional classifier. The KhetSuno web app can run its exported ONNX model locally in the phone browser through ONNX Runtime Web. The app does not upload leaf photos for inference.
 
 ## Dataset references
 
@@ -36,23 +34,17 @@ PlantDoc provides real-world plant disease images and is useful as a second data
 
 ## Google / TensorFlow references
 
-This project follows the standard TensorFlow/Keras transfer-learning pattern:
-- Load an ImageNet-pretrained CNN.
-- Freeze the backbone initially.
-- Train a new classification head.
-- Optionally unfreeze the upper backbone layers for fine-tuning.
-- Use data augmentation and validation metrics.
+The current training script is a compact custom CNN, not a transfer-learning implementation. TensorFlow/Keras trains the classifier; `ml/export_onnx.py` converts the saved model for browser-side inference.
 
 Useful official documentation:
-- https://www.tensorflow.org/tutorials/images/transfer_learning
-- https://keras.io/api/applications/mobilenet/
+- https://www.tensorflow.org/guide/keras/serialization_and_saving
 - https://www.tensorflow.org/lite
 
 ## Dataset folder
 
-For the simplest training workflow, arrange images like:
+The current `ml/train.py` script reads images from:
 
-data/plantvillage/
+Clean_Dataset/Plant Diseases Dataset(Augmented)/train/
     Apple___Apple_scab/
         image1.jpg
         image2.jpg
@@ -85,20 +77,13 @@ pip install -r requirements.txt
 ## Train
 
 ```bash
-python ml/train.py --data_dir ml/data/plantvillage --output_dir ml/models
+python ml/train.py
 ```
 
-For a quick smoke test:
+After training, the script writes:
 
-```bash
-python ml/train.py --data_dir ml/data/plantvillage --epochs 2 --output_dir ml/models
-```
-
-After training, you should have:
-
-- ml/models/crop_disease.keras
-- ml/models/class_names.json
-- ml/models/metrics.json
+- `ml/crop_disease_model.keras`
+- `ml/class_names.txt`
 
 ## Run the website
 
@@ -144,21 +129,15 @@ data/
 
 | Theory | File |
 |---|---|
-| Transfer learning | `ml/train.py` |
-| CNN feature extraction | `ml/train.py` |
-| Image augmentation | `ml/train.py` |
+| CNN image classification | `ml/train.py` |
 | Softmax multi-class classification | model head in `ml/train.py` |
-| Cross-entropy loss | `ml/train.py` |
-| Adam optimizer | `ml/train.py` |
-| Early stopping | `ml/train.py` |
-| Reduce LR on plateau | `ml/train.py` |
-| Precision/recall/F1 | `ml/evaluate.py` |
+| Cross-entropy loss and Adam | `ml/train.py` |
 | REST API | `backend/main.py` |
 | Image preprocessing | `backend/services/predictor.py` |
 | Explainable symptom lookup | `backend/data/disease_knowledge.json` |
 | Web frontend | `frontend/templates/index.html` |
 | Styling | `frontend/static/style.css` |
-| Browser interaction | `frontend/static/app.js` |
+| On-device browser inference | `public/onnx-model.js` |
 
 ## About the 700–800 symptom target
 
@@ -176,7 +155,7 @@ For a high-scoring SIH-style version, expand the knowledge base from authoritati
 4. Add an "unknown / low confidence" threshold.
 5. Add crop selection as an optional input to reduce impossible classes.
 6. Add field-image augmentation and locally collected images.
-7. Export to TFLite for Android/edge deployment.
+7. Export to ONNX for on-device browser/phone deployment.
 8. Add a weather-aware risk score as a separate model, not as hidden model input.
 9. Keep all citations and dataset licenses in `docs/sources.md`.
 
@@ -184,8 +163,24 @@ For a high-scoring SIH-style version, expand the knowledge base from authoritati
 
 Check the exact license of each dataset/version before redistribution. This repository does not redistribute PlantVillage or PlantDoc images.
 
-## KhetSuno voice prototype
+## KhetSuno mobile app
 
-The repository root also includes a voice-first intake prototype in Node.js. Run it with `npm start` and open http://localhost:4173. It keeps the existing FastAPI crop-diagnosis app separate; the voice intake does not yet call the disease model or upload photos.
+The repository root also includes KhetSuno, a mobile-first installable web app. It caches its app shell and ONNX runtime for offline use. Once an ONNX model is exported and cached, leaf classification runs on the phone without a server request.
 
-See [KhetSuno-README.md](KhetSuno-README.md) for the voice flow, language support, and local speech playback notes.
+Install the Node dependency and start the app:
+
+```sh
+npm install
+npm start
+```
+
+To make the on-device classifier available, first train the project model, then export it:
+
+```sh
+python ml/train.py
+python ml/export_onnx.py
+```
+
+The exporter writes `public/models/crop_disease.onnx` and the matching labels file. These artifacts are not included because this checkout has no trained model or dataset. Deploy over HTTPS (or use localhost during development), open the app once while online so it can cache the runtime and model, then install it from the phone browser.
+
+See [KhetSuno-README.md](KhetSuno-README.md) for mobile setup, offline behavior, voice support, and limitations.

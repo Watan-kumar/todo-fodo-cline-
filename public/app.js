@@ -1,6 +1,12 @@
 import { hasLanguage, messages } from "./languages.js";
+import { createOfflineClassifier } from "./onnx-model.js";
 
-export function initVoiceFlow({ document = globalThis.document, window = globalThis.window, fetch = globalThis.fetch } = {}) {
+export function initVoiceFlow({
+  document = globalThis.document,
+  window = globalThis.window,
+  fetch = globalThis.fetch,
+  createClassifier = createOfflineClassifier,
+} = {}) {
   const languageSelect = document.querySelector("#language");
   const recordButton = document.querySelector("#record-button");
   const recordLabel = document.querySelector("#record-label");
@@ -10,6 +16,12 @@ export function initVoiceFlow({ document = globalThis.document, window = globalT
   const photoInput = document.querySelector("#crop-photo");
   const photoPreview = document.querySelector("#photo-preview");
   const photoCopy = document.querySelector(".photo-copy");
+  const analyzeButton = document.querySelector("#analyze-button");
+  const modelStatus = document.querySelector("#model-status");
+  const diagnosisCard = document.querySelector("#diagnosis");
+  const diagnosisTitle = document.querySelector("#diagnosis-title");
+  const diagnosisAlternatives = document.querySelector("#diagnosis-alternatives");
+  const connectionStatus = document.querySelector("#connection-status");
   const submitButton = document.querySelector("#submit-button");
   const resultCard = document.querySelector("#result");
   const resultMessage = document.querySelector("#result-message");
@@ -34,6 +46,21 @@ export function initVoiceFlow({ document = globalThis.document, window = globalT
   let localSpeechRequest = null;
   let activeAudio = null;
   let activeAudioUrl = null;
+  let classifyImage = null;
+  let analysisVersion = 0;
+
+  function updateConnectionStatus() {
+    const online = window.navigator?.onLine !== false;
+    connectionStatus.textContent = online ? "Online · offline app available" : "Offline · on-device checks available";
+    connectionStatus.setAttribute("data-online", String(online));
+  }
+
+  updateConnectionStatus();
+  window.addEventListener?.("online", updateConnectionStatus);
+  window.addEventListener?.("offline", updateConnectionStatus);
+  window.navigator?.serviceWorker?.register("/sw.js").catch(() => {
+    connectionStatus.textContent = "Offline install requires a secure connection";
+  });
 
   function updateControls() {
     const copy = messages[language];
@@ -359,20 +386,64 @@ export function initVoiceFlow({ document = globalThis.document, window = globalT
   });
 
   photoInput.addEventListener("change", () => {
+    analysisVersion += 1;
     if (photoUrl) window.URL.revokeObjectURL(photoUrl);
     photoUrl = null;
     photoPreview.hidden = true;
+    analyzeButton.disabled = true;
+    diagnosisCard.hidden = true;
+    diagnosisTitle.textContent = "";
+    diagnosisAlternatives.replaceChildren();
     const file = photoInput.files?.[0];
-    if (!file) return;
+    if (!file) {
+      modelStatus.textContent = "Choose a leaf photo to begin an offline check.";
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       photoInput.value = "";
       voiceHint.textContent = messages[language].invalidPhoto;
+      modelStatus.textContent = "Choose a supported image file for an offline check.";
       return;
     }
     photoUrl = window.URL.createObjectURL(file);
     photoPreview.src = photoUrl;
     photoPreview.hidden = false;
     photoCopy.querySelector("strong").textContent = file.name;
+    analyzeButton.disabled = false;
+    modelStatus.textContent = "The photo stays on this phone. Check the leaf whenever you are ready.";
+  });
+
+  analyzeButton.addEventListener("click", async () => {
+    const file = photoInput.files?.[0];
+    if (!file || analyzeButton.disabled) return;
+
+    const requestVersion = analysisVersion;
+    analyzeButton.disabled = true;
+    diagnosisCard.hidden = true;
+    modelStatus.textContent = "Loading the on-device model and checking the photo…";
+    try {
+      classifyImage ??= createClassifier();
+      const predictions = await classifyImage(file);
+      if (requestVersion !== analysisVersion) return;
+      const [best, ...alternatives] = predictions;
+      const readableName = (label) => label.replaceAll("___", " · ").replaceAll("_", " ").replace(/\s+/g, " ").trim();
+      diagnosisTitle.textContent = `${readableName(best.label)} · ${Math.round(best.confidence * 100)}%`;
+      diagnosisAlternatives.replaceChildren(...alternatives.map((prediction) => {
+        const item = document.createElement("li");
+        item.textContent = `${readableName(prediction.label)} · ${Math.round(prediction.confidence * 100)}%`;
+        return item;
+      }));
+      diagnosisCard.hidden = false;
+      modelStatus.textContent = "Checked on this phone. The photo was not uploaded.";
+    } catch (error) {
+      if (requestVersion === analysisVersion) {
+        modelStatus.textContent = error instanceof Error
+          ? error.message
+          : "The offline model could not check this photo.";
+      }
+    } finally {
+      if (requestVersion === analysisVersion) analyzeButton.disabled = false;
+    }
   });
 
   submitButton.addEventListener("click", async () => {

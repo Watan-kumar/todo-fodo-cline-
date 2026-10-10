@@ -1,22 +1,36 @@
-# KhetSuno voice prototype
+# KhetSuno mobile crop-care app
 
-Step 1 of the crop-health hackathon app: voice and photo intake in Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi.
+KhetSuno is a mobile-first installable web app with Hindi, Telugu, Tamil, Kannada, Malayalam, and Marathi voice/text intake. Crop photo classification runs locally in the browser with ONNX Runtime Web, so an exported model can work when the phone is offline. Photos are never sent to the server.
 
 ## Run
 
-Requires Node.js 18 or newer. No packages or API keys are needed for this prototype.
+Requires Node.js 18 or newer.
 
 ```sh
+npm install
 npm start
 ```
 
-Open http://localhost:4173 in a browser. Microphone transcription still depends on browser support and the device's speech-recognition service. On macOS, spoken playback first uses installed system voices through `say` and `afconvert`, then falls back to browser speech. Hosted speech APIs and the disease classifier are not connected.
+Open http://localhost:4173 in a browser. For phone testing or installation, deploy over HTTPS. Service workers are restricted to secure contexts; localhost is also supported for development.
+
+## Export the on-device model
+
+Train the compact model using the configured dataset, then convert it to ONNX:
+
+```sh
+python ml/train.py
+python ml/export_onnx.py
+```
+
+The exporter creates `public/models/crop_disease.onnx` and `public/models/class_names.json`. The training data and trained model are not committed, so this checkout cannot classify leaves until those two files are generated. Keep the model input at 48×48 RGB to match the current app preprocessing.
+
+Open the app once while connected after deployment. The service worker caches the app shell, ONNX Runtime Web, and available model files. Later photo inference runs on the phone and does not call a prediction API. Browser voice recognition and speech playback still depend on the phone's browser and installed language services.
 
 ## Language-consistent voice flow
 
 - Choose Hindi, Telugu, Tamil, Kannada, Malayalam, or Marathi before speaking. Recognition uses that selected locale; it never automatically switches to another language.
 - Recognized words appear in an editable text area. Review or correct them, add a photo preview, and explicitly send the query. Recognition does not submit automatically. Editing stops recognition so late speech results cannot overwrite corrections.
-- The intake endpoint returns the selected language alongside its localized placeholder. The displayed message and spoken message are the same text. The disease model is **not connected**, no crop analysis is performed, and photos remain local previews rather than uploads.
+- The intake endpoint returns the selected language alongside its localized placeholder. The displayed message and spoken message are the same text. This intake endpoint is separate from local photo inference and does not perform crop analysis.
 - Playback requires an installed/browser-provided voice in the selected language (exact locale preferred, otherwise the same base language). An unrelated/default voice is never used. If voices load later, playback is retried only for the current response.
 - If recognition is unavailable or fails, a localized message offers typing or retrying; language-specific recognition errors also offer explicitly selecting another language. Browsers do not reliably expose recognition language availability in advance, so failures are handled when reported by the service.
 - If playback is unavailable or fails, the response remains readable and a localized message offers text, voice installation, or retrying with **Hear this message**. There is no automatic translation or language fallback.
@@ -40,6 +54,6 @@ Tests use Node's built-in test runner with no extra packages. They cover all six
 
 ## Next integration steps
 
-1. Connect a pretrained crop-disease classifier and show its supported labels and uncertainty.
-2. Replace browser speech recognition and synthesis with the selected hosted Indic ASR/TTS provider after API access is confirmed.
+1. Train and validate the model with field images; the current starter model is not a field-validated diagnosis system.
+2. Replace browser speech recognition and synthesis with a selected Indic ASR/TTS provider only if network-dependent voice services are acceptable.
 3. Add a source-linked, language-specific advisory dataset for the initial supported crops.

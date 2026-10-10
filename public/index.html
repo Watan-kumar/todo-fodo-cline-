@@ -4,8 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#173b32" />
+    <meta name="description" content="Private crop photo checks that run on your phone, even with weak internet." />
     <title>KhetSuno | Crop health by voice</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/khetsuno.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
+    <script defer src="/vendor/ort.wasm.min.js"></script>
     <script src="/app.js" type="module"></script>
   </head>
   <body>
@@ -14,14 +18,14 @@
         <span class="brand-mark" aria-hidden="true">ks</span>
         <span>KhetSuno</span>
       </a>
-      <span class="prototype-tag"><span class="pulse-dot"></span> Voice prototype</span>
+      <span id="connection-status" class="connection-status" role="status" aria-live="polite">Checking connection…</span>
     </header>
 
     <main>
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow">CROP CARE, SPOKEN YOUR WAY</p>
         <h1 id="page-title">Tell us what<br /><em>your crop is saying.</em></h1>
-        <p class="intro-copy">Speak or type, review your words, and get a text response in your language. Spoken playback requires a voice for that language on your browser or device.</p>
+        <p class="intro-copy">Take a leaf photo and check it on this phone. The photo stays here, and the model can work without a connection.</p>
         <div class="language-row">
           <label for="language">I speak</label>
           <select id="language" name="language">
@@ -66,16 +70,28 @@
           <span class="step-number">02</span>
           <div>
             <h2>Add a crop photo</h2>
-            <p>A clear close-up of the affected leaf works best.</p>
+          <p>A clear close-up works best. Diagnosis runs on this phone.</p>
           </div>
         </div>
 
         <label id="photo-drop" class="photo-drop" for="crop-photo">
           <input id="crop-photo" type="file" accept="image/*" capture="environment" />
           <span class="photo-glyph" aria-hidden="true">＋</span>
-          <span class="photo-copy"><strong>Take or choose a photo</strong><small>JPG or PNG · stored only in this browser preview</small></span>
+          <span class="photo-copy"><strong>Take or choose a leaf photo</strong><small>Use the camera or choose an image · stays on this phone</small></span>
           <img id="photo-preview" alt="Selected crop preview" hidden />
         </label>
+
+        <div class="model-actions">
+          <button id="analyze-button" class="analyze-button" type="button" disabled>Check this leaf offline</button>
+          <p id="model-status" role="status" aria-live="polite">The offline model will be ready after it is exported and installed.</p>
+        </div>
+
+        <section id="diagnosis" class="diagnosis-card" aria-live="polite" hidden>
+          <p class="diagnosis-kicker">ON-DEVICE MODEL RESULT</p>
+          <h3 id="diagnosis-title"></h3>
+          <ol id="diagnosis-alternatives"></ol>
+          <p class="diagnosis-note">This is an AI suggestion, not a confirmed diagnosis. Ask a local agriculture worker before treating the crop.</p>
+        </section>
 
         <button id="submit-button" class="submit-button" type="button">
           <span>Send my query</span><span aria-hidden="true">↗</span>
@@ -89,9 +105,9 @@
         </div>
       </section>
 
-      <p class="prototype-note"><strong>Prototype step 1:</strong> voice and photo intake are working pieces. The crop disease model is not connected yet, so this does not diagnose crops or recommend treatment.</p>
+      <p class="prototype-note"><strong>Privacy:</strong> leaf photos are resized and classified in your browser. They are not uploaded. Voice recognition and spoken replies depend on support provided by your phone.</p>
     </main>
 
-    <footer><span>KhetSuno</span><span>Made for farmers who would rather speak than type.</span></footer>
+    <footer><span>KhetSuno</span><span>Install once while online, then use the saved app in the field.</span></footer>
   </body>
 </html>

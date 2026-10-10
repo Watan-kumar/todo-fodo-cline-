@@ -88,7 +88,19 @@ test("local TTS rejects empty, unsupported, or overlong requests", async () => {
 });
 
 test("browser modules and editable-transcript markup are served", async () => {
-  for (const path of ["/", "/app.js", "/languages.js", "/styles.css"]) {
+  for (const path of [
+    "/",
+    "/app.js",
+    "/languages.js",
+    "/onnx-model.js",
+    "/styles.css",
+    "/sw.js",
+    "/manifest.webmanifest",
+    "/icons/khetsuno.svg",
+    "/icons/khetsuno-192.png",
+    "/icons/khetsuno-512.png",
+    "/vendor/ort.wasm.min.js",
+  ]) {
     const response = await fetch(`${baseUrl}${path}`);
     assert.equal(response.status, 200);
     assert.ok((await response.text()).length > 0);
