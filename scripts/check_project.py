@@ -11,3 +11,5 @@ required = [
 root = Path(__file__).resolve().parent.parent
 missing = [p for p in required if not (root/p).exists()]
 print("PROJECT OK" if not missing else "Missing:\n" + "\n".join(missing))
+
+#scripts done 
