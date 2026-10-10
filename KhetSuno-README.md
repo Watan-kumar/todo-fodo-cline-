@@ -36,6 +36,14 @@ Open the app once while connected after deployment. The service worker caches th
 - If playback is unavailable or fails, the response remains readable and a localized message offers text, voice installation, or retrying with **Hear this message**. There is no automatic translation or language fallback.
 - Changing language cancels recognition, pending requests, and speech, and clears old responses. Existing draft text is preserved with a notice to review or replace it for the newly selected language; it is not silently translated.
 
+## Architecture and folder guides
+
+The Node.js server delivers the PWA and localized intake endpoints. Voice interaction, soil assessment, and optional ONNX photo inference live in `public/`; Python model preparation scripts live in `ml/`. See the README files in `public/`, `ml/`, `docs/`, `scripts/`, and `test/` for folder-specific setup and responsibilities.
+
+## License
+
+This repository has no root `LICENSE` file, so it does not declare a project-wide reuse license. Do not assume permission to reuse or redistribute the code. Dataset, model, dependency, and asset licenses are separate; review their terms before use.
+
 ## Manually checking audio
 
 Choose your language, then press **▶ Test voice** below the language selector. This reads the sample without a microphone, crop photo, or crop-intake request. On macOS, local system voices are tried first for Hindi, Telugu, Tamil, and Kannada. Other languages and platforms use the browser voice when available. This only checks playback; it does not establish speech-recognition support.

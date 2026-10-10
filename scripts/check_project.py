@@ -1,15 +1,38 @@
 from pathlib import Path
-required = [
-    "README.md", "requirements.txt",
-    "backend/main.py", "backend/services/predictor.py",
-    "backend/data/disease_knowledge.json",
-    "ml/train.py", "ml/evaluate.py",
-    "frontend/templates/index.html",
-    "frontend/static/app.js", "frontend/static/style.css",
-    "docs/sources.md"
-]
-root = Path(__file__).resolve().parent.parent
-missing = [p for p in required if not (root/p).exists()]
-print("PROJECT OK" if not missing else "Missing:\n" + "\n".join(missing))
 
-#scripts done 
+
+REQUIRED_FILES = [
+    "README.md",
+    "KhetSuno-README.md",
+    "package.json",
+    "server.js",
+    "public/README.md",
+    "public/icons/README.md",
+    "public/index.html",
+    "public/app.js",
+    "public/onnx-model.js",
+    "public/soil-assessment.js",
+    "ml/README.md",
+    "ml/train.py",
+    "ml/evaluate.py",
+    "ml/export_onnx.py",
+    "docs/README.md",
+    "docs/sources.md",
+    "scripts/README.md",
+    "test/README.md",
+]
+
+
+def main():
+    root = Path(__file__).resolve().parent.parent
+    missing = [path for path in REQUIRED_FILES if not (root / path).is_file()]
+    if missing:
+        print("Missing required project files:\n" + "\n".join(missing))
+        return 1
+
+    print("PROJECT OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
