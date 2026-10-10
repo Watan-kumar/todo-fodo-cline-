@@ -183,3 +183,9 @@ For a high-scoring SIH-style version, expand the knowledge base from authoritati
 ## License note
 
 Check the exact license of each dataset/version before redistribution. This repository does not redistribute PlantVillage or PlantDoc images.
+
+## KhetSuno voice prototype
+
+The repository root also includes a voice-first intake prototype in Node.js. Run it with `npm start` and open http://localhost:4173. It keeps the existing FastAPI crop-diagnosis app separate; the voice intake does not yet call the disease model or upload photos.
+
+See [KhetSuno-README.md](KhetSuno-README.md) for the voice flow, language support, and local speech playback notes.
