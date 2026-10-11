@@ -3,11 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#10352d" />
+    <meta name="theme-color" content="#173a2e" />
     <meta name="description" content="Private crop photo checks that run on your phone, even with weak internet." />
-    <title>KhetSuno | Crop health dashboard</title>
+    <title>KhetSuno | Field care dashboard</title>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/khetsuno.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/NotoSansDevanagari-VF.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/styles.css" />
     <script defer src="/vendor/ort.wasm.min.js"></script>
     <script src="/app.js" type="module"></script>
@@ -37,8 +38,8 @@
         <a href="#main-content" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg>Dashboard</a>
         <a href="#new-scan"><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg>New scan</a>
         <a href="#voice-query"><svg class="icon" aria-hidden="true"><use href="#icon-mic"/></svg>Voice assistant</a>
-        <a href="#soil-assessment"><svg class="icon" aria-hidden="true"><use href="#icon-soil"/></svg>Soil &amp; crops</a>
         <a href="#voice-settings"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg>Voice settings</a>
+        <a href="#soil-assessment"><svg class="icon" aria-hidden="true"><use href="#icon-soil"/></svg>Soil &amp; crops</a>
       </nav>
       <div class="sidebar-note">
         <svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>
@@ -59,12 +60,39 @@
       </header>
 
       <section class="welcome-banner" aria-label="Welcome">
-        <span class="welcome-icon"><svg class="icon" aria-hidden="true"><use href="#icon-leaf"/></svg></span>
-        <div><h2>Healthier crops start with a closer look.</h2><p>Check a leaf, describe a concern, or get to know your soil.</p></div>
-        <a href="#soil-assessment">Explore soil health <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+        <div class="welcome-copy">
+          <p class="hero-kicker">GOOD CARE STARTS WITH AN OBSERVATION</p>
+          <h2><strong>Catch the first sign.</strong><em>Protect the next harvest.</em></h2>
+          <p>Check a leaf, ask in your language, or make sense of your soil report. Start with what you can see.</p>
+          <div class="welcome-actions">
+            <a class="welcome-primary" href="#new-scan">Start a leaf check <svg class="icon" aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+            <a class="welcome-secondary" href="#soil-assessment">Explore soil health</a>
+          </div>
+        </div>
+        <div class="welcome-art" aria-hidden="true">
+          <span class="art-sun"></span>
+          <svg viewBox="0 0 420 310">
+            <defs>
+              <linearGradient id="hero-leaf" x1="0" x2="1" y1="0" y2="1">
+                <stop stop-color="#a8ca62" />
+                <stop offset="1" stop-color="#4d8050" />
+              </linearGradient>
+            </defs>
+            <path d="M205 274C94 222 96 118 276 42c24 130-4 206-71 232Z" fill="url(#hero-leaf)" />
+            <path d="M196 279 267 62m-53 166-73-53m93 13 67-54m-82 16-54-51m88 8 32-39" fill="none" stroke="#e4efc0" stroke-linecap="round" stroke-width="4" />
+            <path d="M18 267c54-37 108-37 162 0s108 37 162 0m-294 28c54-37 108-37 162 0s108 37 162 0" fill="none" stroke="#53794e" stroke-linecap="round" stroke-width="3" opacity=".55" />
+            <path d="M48 234c49-31 95-31 138 0m48 0c49-31 95-31 138 0" fill="none" stroke="#53794e" stroke-linecap="round" stroke-width="2" opacity=".38" />
+          </svg>
+          <span class="art-note">OBSERVE <i></i> CHECK <i></i> CARE</span>
+        </div>
       </section>
 
       <section id="new-scan" class="scan-panel" aria-labelledby="scan-title">
+        <div class="scan-intro">
+          <p class="section-kicker">01 / CROP HEALTH</p>
+          <h2>Check a leaf</h2>
+          <p>Use a clear photo to screen for visible disease signs on this device.</p>
+        </div>
         <label id="photo-drop" class="photo-drop" for="crop-photo">
           <input id="crop-photo" type="file" accept="image/*" capture="environment" />
           <svg class="icon upload-icon" aria-hidden="true"><use href="#icon-image"/></svg>

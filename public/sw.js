@@ -1,4 +1,4 @@
-const CACHE_NAME = "khetsuno-v6";
+const CACHE_NAME = "khetsuno-v8";
 const APP_ASSETS = [
   "/",
   "/app.js",
@@ -9,6 +9,7 @@ const APP_ASSETS = [
   "/soil-assessment.js",
   "/onnx-model.js",
   "/styles.css",
+  "/fonts/NotoSansDevanagari-VF.woff2",
   "/manifest.webmanifest",
   "/icons/khetsuno.svg",
   "/icons/khetsuno-192.png",

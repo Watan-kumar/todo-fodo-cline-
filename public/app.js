@@ -512,7 +512,7 @@ export function initVoiceFlow({
 
   function applyLanguage(hint) {
     const copy = messages[language];
-    for (const element of [recordButton, voiceHint, symptomsField, transcriptLabel, submitButton, resultCard, voiceAvailability, testVoiceButton, voiceSample, voiceTestHint, pauseSpeechButton]) {
+    for (const element of [languageSelect, recordButton, voiceHint, symptomsField, transcriptLabel, submitButton, resultCard, speakResultButton, voiceAvailability, testVoiceButton, voiceSample, voiceTestHint, pauseSpeechButton]) {
       element.lang = language;
     }
     transcriptLabel.textContent = copy.transcriptLabel;

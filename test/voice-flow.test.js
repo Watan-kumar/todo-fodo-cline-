@@ -593,6 +593,11 @@ test("validation, HTTP errors, network failures and response mismatches stay in 
 for (const language of Object.keys(messages)) {
   test(`${language}: voice can be tested without a microphone, photo, or crop request`, async () => {
     const app = setup({ language, recognition: false });
+    assert.equal(app.get("#language").lang, language);
+    assert.equal(app.get("#record-button").lang, language);
+    assert.equal(app.get("#symptoms").lang, language);
+    assert.equal(app.get("#submit-button").lang, language);
+    assert.equal(app.get("#speak-result").lang, language);
     assert.equal(app.get("#voice-availability").textContent, messages[language].voiceReady);
     assert.equal(app.get("#voice-availability").lang, language);
     assert.equal(app.get("#test-voice").textContent, messages[language].testVoice);

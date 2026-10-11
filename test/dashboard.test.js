@@ -79,12 +79,24 @@ test("navigation highlights the current anchor and handles back navigation", () 
 test("dashboard markup has unique IDs, working anchors and offline-cached enhancements", async () => {
   const html = await readFile(new URL("../public/index.html", import.meta.url), "utf8");
   const worker = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+  const css = await readFile(new URL("../public/styles.css", import.meta.url), "utf8");
+  const devanagariFont = await readFile(new URL("../public/fonts/NotoSansDevanagari-VF.woff2", import.meta.url));
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length);
   for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) assert.ok(ids.includes(target), target);
   assert.match(worker, /"\/dashboard\.js"/);
+  assert.match(worker, /"\/fonts\/NotoSansDevanagari-VF\.woff2"/);
   assert.match(html, /Its score is not disease severity/);
   assert.match(html, /Your next leaf check\s+<br\s*\/>starts here\./);
+  assert.match(html, /<strong>Catch the first sign\.<\/strong><em>Protect the next harvest\.<\/em>/);
+  assert.match(html, /NotoSansDevanagari-VF\.woff2/);
+  assert.match(css, /font-family: "Noto Sans Devanagari"/);
+  assert.ok(devanagariFont.length > 100_000);
+  const navigation = html.match(/<nav class="main-nav"[\s\S]*?<\/nav>/)?.[0] || "";
+  assert.deepEqual(
+    [...navigation.matchAll(/<a href="#([^"]+)"/g)].map((match) => `#${match[1]}`),
+    ["#main-content", "#new-scan", "#voice-query", "#voice-settings", "#soil-assessment"],
+  );
   assert.ok(html.indexOf('id="new-scan"') < html.indexOf('id="voice-settings"'));
   assert.ok(html.indexOf('id="voice-settings"') < html.indexOf('id="voice-query"'));
   assert.match(html, /id="pause-speech"/);

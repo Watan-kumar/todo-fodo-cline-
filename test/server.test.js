@@ -244,6 +244,7 @@ test("browser modules and editable-transcript markup are served", async () => {
     "/onnx-model.js",
     "/states.js",
     "/styles.css",
+    "/fonts/NotoSansDevanagari-VF.woff2",
     "/sw.js",
     "/manifest.webmanifest",
     "/icons/khetsuno.svg",
@@ -252,7 +253,8 @@ test("browser modules and editable-transcript markup are served", async () => {
     "/vendor/ort.wasm.min.js",
   ]) {
     const response = await fetch(`${baseUrl}${path}`);
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 200, `${path} should be served`);
+    if (path.endsWith(".woff2")) assert.equal(response.headers.get("content-type"), "font/woff2");
     assert.ok((await response.text()).length > 0);
   }
 });
