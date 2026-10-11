@@ -1,14 +1,35 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { after, before, test } from "node:test";
-import { createAppServer } from "../server.js";
+import { createAppServer, extractClineResponse } from "../server.js";
 import { hasLanguage, messages } from "../public/languages.js";
 import { INDIAN_STATES_AND_UTS } from "../pesticide-rag.js";
+import { assessSoil } from "../public/soil-assessment.js";
 
 let server;
 let baseUrl;
+const soilExplainCalls = [];
+const sampleReadings = {
+  ph: "6.4",
+  soilKind: "alluvial",
+  organicCarbon: "0.62",
+  ec: "0.8",
+  nitrogen: "medium",
+  phosphorus: "low",
+  potassium: "high",
+  water: "irrigated",
+  drainage: "good",
+  compaction: "no",
+  earthworms: "seen",
+};
 before(async () => {
-  server = createAppServer();
+  server = createAppServer({
+    explainSoil: async (request) => {
+      soilExplainCalls.push(request);
+      if (request.readings.soilKind === "sandy") throw new Error("mock Cline is unavailable");
+      return "स्थानीयकृत मिट्टी की व्याख्या";
+    },
+  });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -63,6 +84,7 @@ test("health reports that image inference is local and no report LLM is configur
     ok: true,
     diseaseModelConnected: false,
     reportModelConfigured: false,
+    localTtsLanguages: process.platform === "darwin" ? ["hi-IN", "te-IN", "ta-IN", "kn-IN"] : [],
   });
 });
 
@@ -113,6 +135,77 @@ test("valid diagnosis report returns no pesticide recommendations while the veri
   const payload = await response.json();
   assert.deepEqual(payload.pesticideRows, []);
   assert.equal(payload.generatedByLLM, false);
+});
+
+test("soil explanation sends validated readings, recomputed results, and the selected language to Cline", async () => {
+  const results = assessSoil(sampleReadings);
+  const response = await fetch(`${baseUrl}/api/soil-explain`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ language: "hi-IN", readings: sampleReadings, results }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    language: "hi-IN",
+    explanation: "स्थानीयकृत मिट्टी की व्याख्या",
+  });
+  assert.deepEqual(soilExplainCalls.at(-1), {
+    language: "hi-IN",
+    readings: sampleReadings,
+    assessment: results,
+  });
+});
+
+test("soil explanation rejects unsupported fields, languages, invalid readings, and tampered calculations", async () => {
+  const results = assessSoil(sampleReadings);
+  const invalidRequests = [
+    { language: "en-US", readings: sampleReadings, results },
+    { language: "hi-IN", readings: { ...sampleReadings, symptoms: "free text" }, results },
+    { language: "hi-IN", readings: { ...sampleReadings, ph: "6.4", soilKind: "sandy" }, results },
+    { language: "hi-IN", readings: sampleReadings, results, photo: "private image" },
+  ];
+
+  for (const input of invalidRequests) {
+    const response = await fetch(`${baseUrl}/api/soil-explain`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400);
+    assert.ok((await response.json()).error);
+  }
+});
+
+test("Cline failures are reported without invalidating the offline assessment", async () => {
+  const sandyReadings = { ...sampleReadings, soilKind: "sandy" };
+  const response = await fetch(`${baseUrl}/api/soil-explain`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      language: "hi-IN",
+      readings: sandyReadings,
+      results: assessSoil(sandyReadings),
+    }),
+  });
+
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /offline assessment is still available/i);
+});
+
+test("Cline NDJSON parser returns only the final run result", () => {
+  assert.equal(
+    extractClineResponse([
+      JSON.stringify({ type: "agent_event", event: { type: "content_end", text: "partial" } }),
+      JSON.stringify({ type: "run_result", finishReason: "completed", text: "Final explanation" }),
+    ].join("\n")),
+    "Final explanation",
+  );
+  assert.throws(() => extractClineResponse(JSON.stringify({
+    type: "run_result",
+    finishReason: "aborted",
+    text: "Partial answer",
+  })), /usable explanation/i);
 });
 
 test("local TTS never substitutes a different language voice", async () => {

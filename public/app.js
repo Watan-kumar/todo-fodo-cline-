@@ -65,6 +65,8 @@ export function initVoiceFlow({
   let localSpeechRequest = null;
   let activeAudio = null;
   let activeAudioUrl = null;
+  let audioStartTimer = null;
+  let localTtsLanguages = new Set();
   let classifyImage = null;
   let classifyPest = null;
   let reportRequestVersion = 0;
@@ -217,8 +219,14 @@ export function initVoiceFlow({
     playbackTimer = null;
   }
 
+  function clearAudioStartTimer() {
+    if (audioStartTimer !== null) window.clearTimeout(audioStartTimer);
+    audioStartTimer = null;
+  }
+
   function cancelSpeech() {
     clearPlaybackTimer();
+    clearAudioStartTimer();
     activeUtterance = null;
     playbackActive = false;
     playbackPaused = false;
@@ -265,7 +273,9 @@ export function initVoiceFlow({
   }
 
   function updateVoiceAvailability() {
-    const available = Boolean(window.speechSynthesis && window.SpeechSynthesisUtterance && matchingVoice(language));
+    const browserVoice = Boolean(window.speechSynthesis && window.SpeechSynthesisUtterance && matchingVoice(language));
+    const localVoice = Boolean(window.Audio && localTtsLanguages.has(language));
+    const available = browserVoice || localVoice;
     voiceAvailability.textContent = messages[language][available ? "voiceReady" : "voiceUnavailable"];
   }
 
@@ -311,6 +321,7 @@ export function initVoiceFlow({
       activeAudioUrl = url;
       const releaseAudio = () => {
         if (activeAudio !== audio) return;
+        clearAudioStartTimer();
         activeAudio = null;
         playbackActive = false;
         playbackPaused = false;
@@ -321,6 +332,7 @@ export function initVoiceFlow({
       };
       audio.onplay = () => {
         if (isCurrentResult(result) && activeAudio === audio) {
+          clearAudioStartTimer();
           playbackActive = true;
           playbackPaused = false;
           hint.textContent = copy.playbackPlaying;
@@ -342,22 +354,28 @@ export function initVoiceFlow({
       audio.onerror = () => {
         if (!isCurrentResult(result) || activeAudio !== audio) return;
         releaseAudio();
-        if (fallbackToBrowser) speakBrowser(result, hint);
+        if (fallbackToBrowser && matchingVoice(result.language)) speakBrowser(result, hint);
         else hint.textContent = copy.playbackFailed;
       };
+      audioStartTimer = window.setTimeout(() => {
+        if (activeAudio !== audio) return;
+        releaseAudio();
+        if (fallbackToBrowser && matchingVoice(result.language)) speakBrowser(result, hint);
+        else hint.textContent = copy.playbackStalled;
+      }, 8000);
       const playback = audio.play();
       if (playback?.catch) {
         playback.catch(() => {
           if (!isCurrentResult(result) || activeAudio !== audio) return;
           releaseAudio();
-          if (fallbackToBrowser) speakBrowser(result, hint);
+          if (fallbackToBrowser && matchingVoice(result.language)) speakBrowser(result, hint);
           else hint.textContent = copy.playbackBlocked;
         });
       }
     } catch {
       if (!isCurrent()) return;
       localSpeechRequest = null;
-      if (fallbackToBrowser) speakBrowser(result, hint);
+      if (fallbackToBrowser && matchingVoice(result.language)) speakBrowser(result, hint);
       else hint.textContent = copy.playbackUnavailable;
     }
   }
@@ -837,6 +855,14 @@ export function initVoiceFlow({
   });
   initSoilAssessment(document);
   applyLanguage();
+  fetch("/api/health")
+    .then((response) => response.ok ? response.json() : null)
+    .then((payload) => {
+      if (!Array.isArray(payload?.localTtsLanguages)) return;
+      localTtsLanguages = new Set(payload.localTtsLanguages.filter(hasLanguage));
+      updateVoiceAvailability();
+    })
+    .catch(() => {});
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") initVoiceFlow();

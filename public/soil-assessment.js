@@ -124,15 +124,41 @@ export function assessSoil({
   };
 }
 
-export function initSoilAssessment(document = globalThis.document) {
+const soilReadingFields = [
+  "ph",
+  "soilKind",
+  "organicCarbon",
+  "ec",
+  "nitrogen",
+  "phosphorus",
+  "potassium",
+  "water",
+  "drainage",
+  "compaction",
+  "earthworms",
+];
+
+export function initSoilAssessment(document = globalThis.document, { fetchImpl = globalThis.fetch } = {}) {
   const form = document.querySelector("#soil-form");
   const result = document.querySelector("#soil-result");
   const summary = document.querySelector("#soil-summary");
   const indicators = document.querySelector("#soil-indicators");
   const crops = document.querySelector("#soil-crops");
+  const languageSelect = document.querySelector("#language");
+  const explainButton = document.querySelector("#soil-explain-button");
+  const explainStatus = document.querySelector("#soil-explain-status");
+  const explanation = document.querySelector("#soil-explanation");
+  const explanationText = document.querySelector("#soil-explanation-text");
+  let currentReadings = null;
+  let currentAssessment = null;
+  let requestVersion = 0;
 
   function field(name) {
     return document.querySelector(`[name="${name}"]`).value;
+  }
+
+  function readSoilReadings() {
+    return Object.fromEntries(soilReadingFields.map((name) => [name, field(name)]));
   }
 
   function renderList(target, items) {
@@ -145,20 +171,19 @@ export function initSoilAssessment(document = globalThis.document) {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    requestVersion += 1;
+    currentReadings = null;
+    currentAssessment = null;
+    explainButton.disabled = true;
+    explainStatus.textContent = "";
+    explanation.hidden = true;
+    explanationText.textContent = "";
     try {
-      const assessment = assessSoil({
-        ph: field("ph"),
-        soilKind: field("soilKind"),
-        organicCarbon: field("organicCarbon"),
-        ec: field("ec"),
-        nitrogen: field("nitrogen"),
-        phosphorus: field("phosphorus"),
-        potassium: field("potassium"),
-        water: field("water"),
-        drainage: field("drainage"),
-        compaction: field("compaction"),
-        earthworms: field("earthworms"),
-      });
+      const readings = readSoilReadings();
+      const assessment = assessSoil(readings);
+      currentReadings = readings;
+      currentAssessment = assessment;
+      explainButton.disabled = false;
       summary.textContent = assessment.summary;
       renderList(indicators, assessment.indicators);
       renderList(crops, assessment.crops);
@@ -168,5 +193,58 @@ export function initSoilAssessment(document = globalThis.document) {
       crops.replaceChildren();
     }
     result.hidden = false;
+  });
+
+  explainButton.addEventListener("click", async () => {
+    if (!currentReadings || !currentAssessment || explainButton.disabled) return;
+
+    const version = ++requestVersion;
+    const language = languageSelect.value;
+    explainButton.disabled = true;
+    explainStatus.textContent = "Asking Cline to explain this screening…";
+    explanation.hidden = true;
+    explanationText.textContent = "";
+
+    try {
+      const response = await fetchImpl("/api/soil-explain", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          language,
+          readings: currentReadings,
+          results: currentAssessment,
+        }),
+      });
+      const payload = await response.json();
+      if (
+        !response.ok ||
+        payload.language !== language ||
+        typeof payload.explanation !== "string" ||
+        !payload.explanation.trim() ||
+        payload.explanation.length > 6000
+      ) {
+        throw new Error("The soil explanation is unavailable.");
+      }
+      if (version !== requestVersion || languageSelect.value !== language) return;
+
+      explanation.lang = language;
+      explanationText.textContent = payload.explanation.trim();
+      explanation.hidden = false;
+      explainStatus.textContent = "Explanation provided by Cline.";
+    } catch {
+      if (version === requestVersion && languageSelect.value === language) {
+        explainStatus.textContent = "Cline could not explain the results. Your offline soil screening is still available; try again later.";
+      }
+    } finally {
+      if (version === requestVersion) explainButton.disabled = false;
+    }
+  });
+
+  languageSelect.addEventListener("change", () => {
+    requestVersion += 1;
+    explanation.hidden = true;
+    explanationText.textContent = "";
+    explainStatus.textContent = "";
+    explainButton.disabled = !currentAssessment;
   });
 }

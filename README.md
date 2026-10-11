@@ -21,6 +21,20 @@ npm test
 
 For phone installation and service-worker support, serve the app over HTTPS. Localhost is supported for development. Browser speech recognition and speech playback depend on browser and device language support.
 
+## Optional Cline Soil Explanation
+
+The soil screening remains deterministic and runs in the browser without a model. After an offline assessment, **Explain with Cline (online)** can send only the soil readings, the computed screening result, and the selected language to `POST /api/soil-explain`. The server recomputes and verifies the result before asking Cline CLI for a plain-language explanation. No crop photos, voice transcript, or symptom text are sent by this feature.
+
+Install and configure Cline CLI on the server machine before using the optional explanation:
+
+```sh
+npm install -g cline
+"$(npm root -g)/cline/bin/cline" auth
+CLINE_CLI_PATH="$(npm root -g)/cline/bin/cline" npm start
+```
+
+If Cline CLI is installed elsewhere, set `CLINE_CLI_PATH` to its executable before starting the app. The CLI uses the configured Cline model/provider, which may send the request to an external AI service. If CLI setup, authentication, or the model is unavailable, the offline screening remains usable.
+
 ## Offline Photo Checks
 
 - The leaf classifier is a locally fine-tuned YOLOv8n classification model with 38 PlantVillage labels. The checkpoint is not bundled; generate it as described in [model-sources.md](docs/model-sources.md).
@@ -42,6 +56,7 @@ The pesticide lookup is implemented but its data file is deliberately empty. Add
 
 - `server.js` serves the PWA and localized intake endpoints. `/api/intake` acknowledges text; it does not perform disease inference.
 - `/api/diagnosis-report` validates the local classifier label, applies the provisional 70% report gate, retrieves exact state/disease rows, and can call local Ollama for symptom/cause/prevention text.
+- `/api/soil-explain` validates deterministic soil results and optionally asks the configured Cline CLI to explain them.
 - `public/app.js`, `public/languages.js`, and `public/onnx-model.js` implement the voice/text flow, localized messages, and on-device image classification.
 - `public/local-guidance.js` maps image signals to translated, conservative next steps.
 - `public/dashboard.js`, `public/soil-assessment.js`, and `public/sw.js` provide dashboard interactions, rule-based soil screening, and offline asset caching.

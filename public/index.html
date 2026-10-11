@@ -291,6 +291,15 @@
           <h3>Broad crop shortlist</h3>
           <ul id="soil-crops"></ul>
           <p class="diagnosis-note">This is a screening aid, not a lab diagnosis or yield prediction. Crop suitability depends on district, season, variety, water and local recommendations. Use your soil laboratory or Soil Health Card for fertilizer and amendment rates.</p>
+          <div class="soil-ai-explanation">
+            <button id="soil-explain-button" class="soil-submit" type="button">Explain with Cline (online)</button>
+            <p class="diagnosis-note">This optional request sends only these soil readings, the computed screening result, and your selected language to this server and the AI provider configured for Cline. The offline screening above remains available without it.</p>
+            <p id="soil-explain-status" role="status" aria-live="polite"></p>
+            <section id="soil-explanation" class="soil-explanation" aria-live="polite" hidden>
+              <h3>Explanation</h3>
+              <p id="soil-explanation-text"></p>
+            </section>
+          </div>
         </section>
       </section>
 

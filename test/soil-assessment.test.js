@@ -52,6 +52,8 @@ test("required, out-of-range, and unrecognized inputs are rejected", () => {
 class FakeElement {
   value = "";
   hidden = true;
+  disabled = false;
+  lang = "";
   textContent = "";
   listeners = new Map();
   children = [];
@@ -63,6 +65,8 @@ class FakeElement {
 
 test("soil form renders a local assessment and crop shortlist", async () => {
   const elements = new Map();
+  const requests = [];
+  let shouldFail = false;
   const document = {
     querySelector(selector) {
       if (!elements.has(selector)) elements.set(selector, new FakeElement());
@@ -70,6 +74,7 @@ test("soil form renders a local assessment and crop shortlist", async () => {
     },
     createElement() { return new FakeElement(); },
   };
+  document.querySelector("#language").value = "te-IN";
   const fields = {
     ph: "6.4",
     soilKind: "alluvial",
@@ -85,7 +90,18 @@ test("soil form renders a local assessment and crop shortlist", async () => {
   };
   for (const [name, value] of Object.entries(fields)) document.querySelector(`[name="${name}"]`).value = value;
 
-  initSoilAssessment(document);
+  initSoilAssessment(document, {
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (shouldFail) throw new Error("CLI unavailable");
+      return {
+        ok: true,
+        async json() {
+          return { language: "te-IN", explanation: "తెలుగులో మట్టి వివరణ" };
+        },
+      };
+    },
+  });
   let prevented = false;
   await document.querySelector("#soil-form").emit("submit", { preventDefault() { prevented = true; } });
 
@@ -94,4 +110,20 @@ test("soil form renders a local assessment and crop shortlist", async () => {
   assert.match(document.querySelector("#soil-summary").textContent, /Screening completed/);
   assert.ok(document.querySelector("#soil-indicators").children.some((item) => /Organic carbon: 0.80% · High/.test(item.textContent)));
   assert.ok(document.querySelector("#soil-crops").children.some((item) => /Wheat/.test(item.textContent)));
+  assert.equal(document.querySelector("#soil-explain-button").disabled, false);
+
+  await document.querySelector("#soil-explain-button").emit("click");
+  assert.equal(requests[0].url, "/api/soil-explain");
+  assert.deepEqual(Object.keys(JSON.parse(requests[0].options.body)).sort(), ["language", "readings", "results"]);
+  assert.equal(JSON.parse(requests[0].options.body).language, "te-IN");
+  assert.deepEqual(JSON.parse(requests[0].options.body).readings, fields);
+  assert.equal(document.querySelector("#soil-explanation-text").textContent, "తెలుగులో మట్టి వివరణ");
+  assert.equal(document.querySelector("#soil-explanation").lang, "te-IN");
+  assert.equal(document.querySelector("#soil-explanation").hidden, false);
+
+  const offlineSummary = document.querySelector("#soil-summary").textContent;
+  shouldFail = true;
+  await document.querySelector("#soil-explain-button").emit("click");
+  assert.equal(document.querySelector("#soil-summary").textContent, offlineSummary);
+  assert.match(document.querySelector("#soil-explain-status").textContent, /offline soil screening is still available/i);
 });
