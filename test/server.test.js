@@ -26,7 +26,9 @@ before(async () => {
   server = createAppServer({
     explainSoil: async (request) => {
       soilExplainCalls.push(request);
-      if (request.readings.soilKind === "sandy") throw new Error("mock Cline is unavailable");
+      if (request.readings.soilKind === "sandy") {
+        throw Object.assign(new Error("Cline CLI was not found"), { code: "ENOENT" });
+      }
       return "स्थानीयकृत मिट्टी की व्याख्या";
     },
   });
@@ -177,7 +179,7 @@ test("soil explanation rejects unsupported fields, languages, invalid readings, 
   }
 });
 
-test("Cline failures are reported without invalidating the offline assessment", async () => {
+test("a missing Cline CLI returns actionable setup guidance without invalidating the offline assessment", async () => {
   const sandyReadings = { ...sampleReadings, soilKind: "sandy" };
   const response = await fetch(`${baseUrl}/api/soil-explain`, {
     method: "POST",
@@ -190,7 +192,7 @@ test("Cline failures are reported without invalidating the offline assessment", 
   });
 
   assert.equal(response.status, 503);
-  assert.match((await response.json()).error, /offline assessment is still available/i);
+  assert.match((await response.json()).error, /npm install -g cline.*cline auth.*offline soil screening is still available/i);
 });
 
 test("Cline NDJSON parser returns only the final run result", () => {

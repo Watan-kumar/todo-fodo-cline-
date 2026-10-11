@@ -350,6 +350,11 @@ async function handleRequest(request, response, { explainSoil = explainWithCline
       if (error instanceof SyntaxError || error instanceof TypeError || error instanceof RangeError) {
         return sendJson(response, 400, { error: "Please check the selected language, soil readings, and computed results." });
       }
+      if (error?.code === "ENOENT") {
+        return sendJson(response, 503, {
+          error: "Cline CLI was not found. Install it with `npm install -g cline`, authenticate with `cline auth`, then restart the server. Your offline soil screening is still available.",
+        });
+      }
       return sendJson(response, 503, { error: "Cline could not explain the soil results. The offline assessment is still available." });
     }
   }

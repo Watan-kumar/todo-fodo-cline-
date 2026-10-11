@@ -93,7 +93,14 @@ test("soil form renders a local assessment and crop shortlist", async () => {
   initSoilAssessment(document, {
     fetchImpl: async (url, options) => {
       requests.push({ url, options });
-      if (shouldFail) throw new Error("CLI unavailable");
+      if (shouldFail) {
+        return {
+          ok: false,
+          async json() {
+            return { error: "Cline CLI was not found. Install it with npm install -g cline." };
+          },
+        };
+      }
       return {
         ok: true,
         async json() {
@@ -125,5 +132,5 @@ test("soil form renders a local assessment and crop shortlist", async () => {
   shouldFail = true;
   await document.querySelector("#soil-explain-button").emit("click");
   assert.equal(document.querySelector("#soil-summary").textContent, offlineSummary);
-  assert.match(document.querySelector("#soil-explain-status").textContent, /offline soil screening is still available/i);
+  assert.match(document.querySelector("#soil-explain-status").textContent, /Cline CLI was not found.*npm install -g cline/i);
 });

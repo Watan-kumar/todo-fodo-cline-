@@ -216,8 +216,10 @@ export function initSoilAssessment(document = globalThis.document, { fetchImpl =
         }),
       });
       const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(typeof payload.error === "string" ? payload.error : "The soil explanation is unavailable.");
+      }
       if (
-        !response.ok ||
         payload.language !== language ||
         typeof payload.explanation !== "string" ||
         !payload.explanation.trim() ||
@@ -231,9 +233,11 @@ export function initSoilAssessment(document = globalThis.document, { fetchImpl =
       explanationText.textContent = payload.explanation.trim();
       explanation.hidden = false;
       explainStatus.textContent = "Explanation provided by Cline.";
-    } catch {
+    } catch (error) {
       if (version === requestVersion && languageSelect.value === language) {
-        explainStatus.textContent = "Cline could not explain the results. Your offline soil screening is still available; try again later.";
+        explainStatus.textContent = error instanceof Error && error.message
+          ? error.message
+          : "Cline could not explain the results. Your offline soil screening is still available; try again later.";
       }
     } finally {
       if (version === requestVersion) explainButton.disabled = false;
