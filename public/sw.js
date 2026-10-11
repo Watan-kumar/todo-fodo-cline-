@@ -1,4 +1,4 @@
-const CACHE_NAME = "khetsuno-v4";
+const CACHE_NAME = "khetsuno-v5";
 const APP_ASSETS = [
   "/",
   "/app.js",

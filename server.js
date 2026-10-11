@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { hasLanguage, messages } from "./public/languages.js";
+import { assessSoil } from "./public/soil-assessment.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = resolve(root, "public");
@@ -18,6 +19,28 @@ const localVoices = {
   "te-IN": "Geeta",
   "ta-IN": "Vani",
   "kn-IN": "Soumya",
+};
+const localTtsLanguages = process.platform === "darwin" ? Object.keys(localVoices) : [];
+const soilReadingFields = [
+  "ph",
+  "soilKind",
+  "organicCarbon",
+  "ec",
+  "nitrogen",
+  "phosphorus",
+  "potassium",
+  "water",
+  "drainage",
+  "compaction",
+  "earthworms",
+];
+const languageNames = {
+  "hi-IN": "Hindi",
+  "te-IN": "Telugu",
+  "ta-IN": "Tamil",
+  "kn-IN": "Kannada",
+  "ml-IN": "Malayalam",
+  "mr-IN": "Marathi",
 };
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -52,11 +75,166 @@ async function renderLocalSpeech(language, text) {
   }
 }
 
-async function handleRequest(request, response) {
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasExactKeys(value, expectedKeys) {
+  return isRecord(value) &&
+    Object.keys(value).length === expectedKeys.length &&
+    expectedKeys.every((key) => Object.hasOwn(value, key));
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function validateSoilRequest(input) {
+  if (!hasExactKeys(input, ["language", "readings", "results"]) || !hasLanguage(input.language)) {
+    throw new TypeError("A supported language, soil readings, and computed results are required.");
+  }
+  if (!hasExactKeys(input.readings, soilReadingFields)) {
+    throw new TypeError("Only the supported soil readings may be sent.");
+  }
+  for (const value of Object.values(input.readings)) {
+    if (typeof value !== "string" || value.length > 32) {
+      throw new TypeError("Soil readings must be short text values.");
+    }
+  }
+  if (
+    !input.readings.ph.trim() ||
+    ["organicCarbon", "ec"].some((key) => input.readings[key] !== "" && !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(input.readings[key]))
+  ) {
+    throw new TypeError("Enter valid numeric soil readings.");
+  }
+
+  const observationOptions = {
+    drainage: ["unknown", "good", "slow"],
+    compaction: ["unknown", "no", "yes"],
+    earthworms: ["unknown", "seen", "not-seen"],
+  };
+  for (const [field, options] of Object.entries(observationOptions)) {
+    if (!options.includes(input.readings[field])) throw new TypeError(`Choose a valid ${field} observation.`);
+  }
+
+  const assessment = assessSoil(input.readings);
+  if (stableJson(input.results) !== stableJson(assessment)) {
+    throw new TypeError("Computed results must match the submitted soil readings.");
+  }
+  return { language: input.language, readings: input.readings, assessment };
+}
+
+function buildSoilExplanationPrompt({ language, readings, assessment }) {
+  return [
+    `Explain this existing soil screening in ${languageNames[language]} (${language}).`,
+    "Use only the supplied readings and computed result. Do not recalculate, change, or grade the soil.",
+    "Do not invent fertilizer rates, amendment doses, disease diagnoses, or guaranteed crop suitability.",
+    "Explain the indicators and shortlist in plain, concise language. Mention that local soil-lab or agriculture-office advice is needed for crop and input decisions.",
+    "Return only the explanation in the requested language, without headings in English unless they are naturally used in that language.",
+    `Validated soil readings and computed results: ${JSON.stringify({ readings, results: assessment })}`,
+  ].join("\n");
+}
+
+export function extractClineResponse(output) {
+  let finalResult = null;
+  for (const line of output.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      if (event.type === "run_result") finalResult = event;
+    } catch {
+      // Ignore non-JSON diagnostic lines; --json's run_result remains authoritative.
+    }
+  }
+  if (
+    !finalResult ||
+    finalResult.finishReason === "aborted" ||
+    typeof finalResult.text !== "string" ||
+    !finalResult.text.trim() ||
+    finalResult.text.length > 6000
+  ) {
+    throw new Error("Cline did not return a usable explanation.");
+  }
+  return finalResult.text.trim();
+}
+
+async function explainWithCline(request) {
+  const directory = await mkdtemp(join(tmpdir(), "khetsuno-cline-"));
+  try {
+    const cliPath = process.env.CLINE_CLI_PATH || "cline";
+    const prompt = buildSoilExplanationPrompt(request);
+    const systemPrompt = [
+      "You are a cautious agricultural soil-results explainer.",
+      "Do not use tools, inspect files, modify files, run commands, or ask for approval.",
+      "Explain only the supplied deterministic soil screening; do not diagnose disease or prescribe fertilizer, pesticide, or amendment rates.",
+      "Return only concise, plain-language user-facing text in the requested language.",
+    ].join(" ");
+    const { stdout } = await runFile(cliPath, [
+      "--json",
+      "--plan",
+      "--auto-approve",
+      "false",
+      "--system",
+      systemPrompt,
+      "--timeout",
+      "75",
+      "--cwd",
+      directory,
+      prompt,
+    ], {
+      cwd: directory,
+      timeout: 85000,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+    return extractClineResponse(stdout);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function handleRequest(request, response, { explainSoil = explainWithCline } = {}) {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
 
+  if (url.pathname === "/api/soil-explain") {
+    if (request.method !== "POST") return sendJson(response, 405, { error: "Method not allowed." });
+
+    let body = "";
+    let size = 0;
+    for await (const chunk of request) {
+      size += chunk.length;
+      if (size > 20_000) return sendJson(response, 413, { error: "Soil explanation payload is too large." });
+      body += chunk;
+    }
+
+    try {
+      const validated = validateSoilRequest(JSON.parse(body || "{}"));
+      const explanation = await explainSoil(validated);
+      if (typeof explanation !== "string" || !explanation.trim() || explanation.length > 6000) {
+        throw new Error("Invalid Cline response.");
+      }
+      return sendJson(response, 200, {
+        language: validated.language,
+        explanation: explanation.trim(),
+      });
+    } catch (error) {
+      if (error instanceof SyntaxError || error instanceof TypeError || error instanceof RangeError) {
+        return sendJson(response, 400, { error: "Please check the selected language, soil readings, and computed results." });
+      }
+      return sendJson(response, 503, { error: "Cline could not explain the soil results. The offline assessment is still available." });
+    }
+  }
+
   if (url.pathname === "/api/health" && request.method === "GET") {
-    return sendJson(response, 200, { ok: true, diseaseModelConnected: false });
+    return sendJson(response, 200, {
+      ok: true,
+      diseaseModelConnected: false,
+      localTtsLanguages,
+    });
   }
 
   if (url.pathname === "/api/tts" && request.method === "POST") {
@@ -147,8 +325,8 @@ async function handleRequest(request, response) {
   }
 }
 
-export function createAppServer() {
-  return createServer(handleRequest);
+export function createAppServer(options = {}) {
+  return createServer((request, response) => handleRequest(request, response, options));
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

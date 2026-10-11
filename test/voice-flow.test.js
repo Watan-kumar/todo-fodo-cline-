@@ -40,6 +40,8 @@ function setup({
   prefixed = false,
   synthesis = true,
   nativeAudio = false,
+  silentAudio = false,
+  localTtsLanguages = [],
   voices,
   fetch: fetchOverride,
   createClassifier,
@@ -93,7 +95,10 @@ function setup({
   if (nativeAudio) {
     window.Audio = class {
       constructor(url) { this.url = url; audios.push(this); }
-      play() { this.onplay?.(); return Promise.resolve(); }
+      play() {
+        if (!silentAudio) this.onplay?.();
+        return Promise.resolve();
+      }
       pause() { this.paused = true; }
     };
   }
@@ -101,6 +106,7 @@ function setup({
   if (synthesis) window.speechSynthesis = speech;
   const requests = [];
   const fetch = async (url, options) => {
+    if (url === "/api/health") return response({ localTtsLanguages });
     requests.push({ url, ...options });
     if (fetchOverride) return fetchOverride(url, options);
     const { language: locale } = JSON.parse(options.body);
@@ -610,6 +616,40 @@ test("manual voice test plays local WAV speech before using browser synthesis", 
   assert.equal(app.get("#voice-test-hint").textContent, messages["hi-IN"].playbackPlaying);
   app.audios[0].onended();
   assert.equal(app.get("#voice-test-hint").textContent, messages["hi-IN"].playbackFinished);
+});
+
+test("server-side TTS languages are shown as available when browser voices are missing", async () => {
+  const app = setup({
+    language: "te-IN",
+    recognition: false,
+    synthesis: false,
+    nativeAudio: true,
+    localTtsLanguages: ["te-IN"],
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(app.get("#voice-availability").textContent, messages["te-IN"].voiceReady);
+  await app.get("#test-voice").emit("click");
+  assert.equal(app.audios.length, 1);
+  assert.equal(app.get("#voice-test-hint").textContent, messages["te-IN"].playbackPlaying);
+  app.audios[0].onended();
+  assert.equal(app.get("#voice-test-hint").textContent, messages["te-IN"].playbackFinished);
+});
+
+test("silent local audio playback times out with a retryable status", async () => {
+  const app = setup({
+    language: "te-IN",
+    recognition: false,
+    nativeAudio: true,
+    silentAudio: true,
+    voices: [{ lang: "en-US" }],
+  });
+
+  await app.get("#test-voice").emit("click");
+  assert.equal(app.audios.length, 1);
+  app.fireTimers();
+  assert.equal(app.get("#voice-test-hint").textContent, messages["te-IN"].playbackStalled);
+  assert.equal(app.speech.spoken.length, 0);
 });
 
 test("local speech unavailable falls back to the matching browser voice", async () => {
