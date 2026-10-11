@@ -13,16 +13,18 @@ npm start
 
 Open http://localhost:4173 in a browser. For phone testing or installation, deploy over HTTPS. Service workers are restricted to secure contexts; localhost is also supported for development.
 
-## Refresh the bundled model files
+## Prepare the local classifier model
 
-Install export dependencies and fetch/export the public models:
+Install training dependencies and export the disease model from a legally usable PlantVillage copy laid out in matching `train/`, `val/`, and `test/` class folders. The dataset and trained checkpoint are not bundled:
 
 ```sh
+python -m pip install -r tools/yolov8-requirements.txt
+python tools/train_yolov8_classifier.py --data /path/to/plantvillage
 python -m pip install -r tools/model-export-requirements.txt
 python tools/fetch_mobile_models.py
 ```
 
-This creates the disease and pest ONNX files, ordered labels, and upstream license notices under `public/models/`. See [model-sources.md](docs/model-sources.md) for model scope, licenses, preprocessing, and limitations.
+This creates the disease and pest ONNX files, ordered labels, and upstream license notices under `public/models/`. Configure `OLLAMA_MODEL` to an installed local Ollama instruct model if you want generated explanatory reports; leave it unset to use conservative local screening guidance only. Treatment rows live in `data/pesticide-knowledge.json` and must be verified for exact crop/disease and state from current official sources before being added. See [model-sources.md](docs/model-sources.md) for scope, licenses, preprocessing, and limitations.
 
 Use the leaf input only for leaf-disease screening and the separate insect input for a close-up cereal-pest photo. The first online visit lets the service worker cache both models and the ONNX runtime; later inference and IPM guidance run locally. Browser voice recognition and speech playback still depend on the phone's browser and installed language services.
 

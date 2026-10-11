@@ -11,6 +11,7 @@ REQUIRED_FILES = [
     "public/index.html",
     "public/app.js",
     "public/onnx-model.js",
+    "public/states.js",
     "public/soil-assessment.js",
     "ml/README.md",
     "ml/train.py",
@@ -18,6 +19,10 @@ REQUIRED_FILES = [
     "ml/export_onnx.py",
     "docs/README.md",
     "docs/sources.md",
+    "pesticide-rag.js",
+    "data/pesticide-knowledge.json",
+    "data/pesticide-knowledge.schema.json",
+    "tools/train_yolov8_classifier.py",
     "scripts/README.md",
     "test/README.md",
 ]

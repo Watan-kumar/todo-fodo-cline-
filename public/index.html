@@ -71,7 +71,29 @@
           <span class="photo-copy"><strong id="scan-title">Drop a leaf photo here</strong><small>Leaf images only for disease checks. Your photo stays here.</small></span>
         </label>
         <button id="scan-trigger" class="scan-trigger" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg><span>Scan a leaf<small lang="hi">पत्ता स्कैन करें</small></span></button>
-        <p class="scan-footnote">A clear, well-lit close-up works best. Choose a photo, then run the leaf check below.</p>
+        <p class="scan-footnote">Step 1: Add a clear, well-lit leaf photo. The check runs on this device.</p>
+      </section>
+
+      <section id="voice-settings" class="voice-settings panel" aria-labelledby="settings-title">
+        <div class="panel-heading"><h2 id="settings-title">Step 2 · Choose your language</h2><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></div>
+        <p class="section-copy">The assistant will listen and speak in the selected language.</p>
+        <div class="language-row">
+          <label for="language">I speak</label>
+          <select id="language" name="language">
+            <option value="hi-IN">हिंदी · Hindi</option>
+            <option value="te-IN">తెలుగు · Telugu</option>
+            <option value="ta-IN">தமிழ் · Tamil</option>
+            <option value="kn-IN">ಕನ್ನಡ · Kannada</option>
+            <option value="ml-IN">മലയാളം · Malayalam</option>
+            <option value="mr-IN">मराठी · Marathi</option>
+          </select>
+        </div>
+        <div class="voice-check">
+          <p id="voice-availability" role="status" aria-live="polite"></p>
+          <p id="voice-sample"></p>
+          <button id="test-voice" class="speak-result" type="button" aria-describedby="voice-availability voice-sample">▶ Test voice</button>
+          <p id="voice-test-hint" role="status" aria-live="polite"></p>
+        </div>
       </section>
 
       <section class="latest-result panel" aria-labelledby="latest-title">
@@ -96,11 +118,22 @@
               <h4>Other possible matches</h4>
               <ol id="diagnosis-alternatives"></ol>
               <p id="diagnosis-advice" class="diagnosis-note"></p>
-              <p class="diagnosis-note">This PlantVillage-trained model is a screening aid, not a field-validated diagnosis. Its score is not disease severity. Ask a local agriculture worker before treating the crop.</p>
+              <label class="state-label" for="farm-state">State or union territory for verified treatment guidance
+                <select id="farm-state" name="farm-state">
+                  <option value="">Choose state or union territory</option>
+                </select>
+              </label>
+              <p id="report-status" role="status" aria-live="polite" class="diagnosis-note"></p>
+              <p id="generated-report" class="generated-report"></p>
+              <section class="pesticide-results" aria-label="Verified treatment options">
+                <h4>Verified treatment options</h4>
+                <ul id="pesticide-options"></ul>
+              </section>
+              <p class="diagnosis-note">This PlantVillage-trained YOLOv8 classifier is a screening aid, not a field-validated diagnosis. Its score is not disease severity, and 70% is a preliminary threshold that must be tuned on local field photos. The leaf photo stays in this browser; the label, score, state, and optional notes go to the app server for a report. Confirm results with a local agriculture worker before treating the crop.</p>
             </section>
             <div class="model-actions">
               <button id="analyze-button" class="analyze-button" type="button" disabled>Check this leaf offline <span aria-hidden="true">→</span></button>
-              <p id="model-status" role="status" aria-live="polite">The disease model will be installed with the app. Open it once online to cache both models for offline use.</p>
+              <p id="model-status" role="status" aria-live="polite">Generate the local YOLOv8 model with tools/train_yolov8_classifier.py, then open the app online once to cache it for offline use.</p>
             </div>
             <div class="pest-actions">
               <label class="pest-photo-label" for="pest-photo">
@@ -120,34 +153,12 @@
         </div>
       </section>
 
-      <section id="voice-settings" class="voice-settings panel" aria-labelledby="settings-title">
-        <div class="panel-heading"><h2 id="settings-title">Speak your language</h2><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></div>
-        <p class="section-copy">Crop care, in a voice that feels like home.</p>
-        <div class="language-row">
-          <label for="language">I speak</label>
-          <select id="language" name="language">
-            <option value="hi-IN">हिंदी · Hindi</option>
-            <option value="te-IN">తెలుగు · Telugu</option>
-            <option value="ta-IN">தமிழ் · Tamil</option>
-            <option value="kn-IN">ಕನ್ನಡ · Kannada</option>
-            <option value="ml-IN">മലയാളം · Malayalam</option>
-            <option value="mr-IN">मराठी · Marathi</option>
-          </select>
-        </div>
-        <div class="voice-check">
-          <p id="voice-availability" role="status" aria-live="polite"></p>
-          <p id="voice-sample"></p>
-          <button id="test-voice" class="speak-result" type="button" aria-describedby="voice-availability voice-sample">▶ Test voice</button>
-          <p id="voice-test-hint" role="status" aria-live="polite"></p>
-        </div>
-      </section>
-
       <section id="voice-query" class="workbench panel" aria-label="Crop query intake">
         <div class="step-heading">
           <span class="section-icon"><svg class="icon" aria-hidden="true"><use href="#icon-mic"/></svg></span>
           <div>
-            <h2>Voice assistant</h2>
-            <p>Tell us the crop and what changed. You can speak or type.</p>
+            <h2>Step 3 · Ask the voice assistant</h2>
+            <p>Describe your concern by voice or text, then get spoken guidance from the photo check.</p>
           </div>
         </div>
 
@@ -163,15 +174,16 @@
           <textarea id="symptoms" rows="3" aria-describedby="voice-hint" placeholder="Your words will appear here…"></textarea>
         </div>
 
-        <p class="intake-note">Have a concern? Run an offline leaf or insect photo check above, then describe what you see. Sending a text query requires a connection and does not create a diagnosis.</p>
+        <p class="intake-note">Your photo is checked on this device. The voice reply gives translated screening guidance; it is not a confirmed diagnosis or a separate analysis of your spoken words.</p>
         <button id="submit-button" class="submit-button" type="button">
-          <span>Send my query</span><span aria-hidden="true">↗</span>
+          <span>Get spoken guidance</span><span aria-hidden="true">↗</span>
         </button>
 
         <div id="result" class="result-card" role="status" aria-live="polite" hidden>
           <div class="result-topline"><span class="result-dot"></span><span id="result-label">INTAKE STATUS</span></div>
           <p id="result-message"></p>
           <button id="speak-result" class="speak-result" type="button">▶ Hear this message</button>
+          <button id="pause-speech" class="speak-result" type="button" disabled>⏸ Pause</button>
           <p id="playback-hint" class="playback-hint" role="status" aria-live="polite"></p>
         </div>
       </section>

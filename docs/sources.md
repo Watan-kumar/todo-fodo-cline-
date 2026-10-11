@@ -62,11 +62,30 @@
 20. Government of India, PPQS — Small-cardamom AESA/IPM package; field scouting and the limits of visual diagnosis.
     https://ppqs.gov.in/sites/default/files/small_cardamom.pdf
 
-21. Kathir56 — Plant Disease Classifier for Tamil Nadu, model card and Apache-2.0 license metadata.
-    https://huggingface.co/Kathir56/plant-disease-tamilnadu
+21. Ultralytics — YOLOv8 image-classification model documentation and license information.
+    https://docs.ultralytics.com/tasks/classify/
+    https://docs.ultralytics.com/models/yolov8/
+    https://github.com/ultralytics/ultralytics/blob/v8.3.0/ultralytics/data/augment.py
+    https://github.com/ultralytics/ultralytics/blob/v8.3.0/ultralytics/nn/modules/head.py
 
 22. Sheneman et al. — CerealPestAID, 26 cereal-pest image classifier and MIT license.
     https://huggingface.co/sheneman/CerealPestAID
     https://github.com/sheneman/CerealPestAID
 
 Always verify dataset licenses and source-specific usage terms before redistributing data or publishing a trained model.
+
+23. Government of India, CIB&RC/PPQS — Major Uses of Pesticides registered under the Insecticides Act, 1968, with crop claims and waiting periods.
+    https://ppqs.gov.in/sites/default/files/major_uses_of_pesticides_herbicides_as_on_31.03.2024.pdf
+
+24. Hugging Face dataset card for the original PlantVillage color images (CC-BY-SA-3.0), including the published train/test split.
+   https://huggingface.co/datasets/mohanty/PlantVillage
+
+25. Ultralytics — YOLOv8 image classification support and licensing.
+   https://docs.ultralytics.com/tasks/classify/
+   https://github.com/ultralytics/ultralytics/blob/v8.3.0/LICENSE
+
+26. Government of India, CIB&RC/PPQS — Wheat Rust control guide, including registered options, dose, and waiting period.
+    https://ppqs.gov.in/sites/default/files/wheat_rust-english.pdf
+
+27. Ollama library — Qwen2 7B instruct model details and Apache-2.0 license.
+    https://ollama.com/library/qwen2:7b-instruct

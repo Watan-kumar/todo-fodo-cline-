@@ -101,6 +101,13 @@ textarea::placeholder { color: #90998a; }
 .diagnosis-card h3 { margin: 0; color: var(--forest-deep); font-size: 17px; }
 .diagnosis-card ol { display: grid; gap: 5px; margin: 10px 0; padding-left: 20px; color: #59685d; font-size: 12px; }
 .diagnosis-note { margin: 12px 0 0; color: #69756a; font-size: 11px; line-height: 1.55; }
+.state-label { display: grid; gap: 7px; margin-top: 18px; color: var(--forest); font-size: 12px; font-weight: 700; }
+.state-label select { width: 100%; padding: 11px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); }
+.generated-report { white-space: pre-line; margin: 14px 0 0; color: var(--ink); font-size: 12px; line-height: 1.65; }
+.pesticide-results { margin-top: 16px; }
+.pesticide-results h4 { margin: 0 0 8px; font-size: 12px; }
+.pesticide-results ul { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: #59685d; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+.pesticide-results a { color: var(--forest); }
 .submit-button { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 17px; padding: 15px 17px; border: 0; border-radius: 10px; background: var(--lime); color: var(--forest-deep); font-weight: 700; font-size: 13px; transition: background .2s, transform .2s; }
 .submit-button:hover { background: #b8d276; transform: translateY(-1px); }
 .submit-button span:last-child { font-size: 19px; }

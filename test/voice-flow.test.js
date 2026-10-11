@@ -44,6 +44,7 @@ function setup({
   fetch: fetchOverride,
   createClassifier,
   createPest,
+  autoAnalyzeOnSubmit = false,
   startError,
   speakError,
 } = {}) {
@@ -74,7 +75,9 @@ function setup({
   speech.spoken = [];
   speech.cancelCount = 0;
   speech.resumeCount = 0;
+  speech.pauseCount = 0;
   speech.resume = () => { speech.resumeCount += 1; };
+  speech.pause = () => { speech.pauseCount += 1; };
   speech.cancel = () => { speech.cancelCount += 1; };
   speech.getVoices = () => availableVoices;
   speech.speak = (utterance) => {
@@ -93,8 +96,8 @@ function setup({
   if (nativeAudio) {
     window.Audio = class {
       constructor(url) { this.url = url; audios.push(this); }
-      play() { this.onplay?.(); return Promise.resolve(); }
-      pause() { this.paused = true; }
+      play() { this.paused = false; this.onplay?.(); return Promise.resolve(); }
+      pause() { this.paused = true; this.onpause?.(); }
     };
   }
   if (recognition) window[prefixed ? "webkitSpeechRecognition" : "SpeechRecognition"] = Recognition;
@@ -104,9 +107,16 @@ function setup({
     requests.push({ url, ...options });
     if (fetchOverride) return fetchOverride(url, options);
     const { language: locale } = JSON.parse(options.body);
+    if (url === "/api/diagnosis-report") {
+      return response({
+        generatedByLLM: false,
+        pesticideRows: [],
+        message: "Install and configure a local Ollama instruct model to generate the explanatory report.",
+      });
+    }
     return response({ received: true, diseaseModelConnected: false, language: locale, message: messages[locale].ready });
   };
-  initVoiceFlow({ document, window, fetch, createClassifier, createPest });
+  initVoiceFlow({ document, window, fetch, createClassifier, createPest, autoAnalyzeOnSubmit });
   return {
     get, recognizers, speech, requests, window, timers, audios,
     fireTimers: () => {
@@ -137,7 +147,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-test("selected leaf photos are classified locally without sending a request", async () => {
+test("selected leaf photos are classified locally and report requests contain labels, not photos", async () => {
   const photo = { name: "leaf.png", type: "image/png" };
   let classifiedPhoto;
   let loads = 0;
@@ -156,26 +166,111 @@ test("selected leaf photos are classified locally without sending a request", as
   });
   app.get("#crop-photo").files = [photo];
   await app.get("#crop-photo").emit("change");
+  app.get("#farm-state").value = "Maharashtra";
   assert.equal(app.get("#analyze-button").disabled, false);
   await app.get("#analyze-button").emit("click");
 
   assert.equal(loads, 1);
   assert.equal(classifiedPhoto, photo);
-  assert.equal(app.requests.length, 0);
+  assert.equal(app.requests.length, 1);
+  assert.equal(app.requests[0].url, "/api/diagnosis-report");
+  assert.equal(app.requests[0].body.includes("leaf.png"), false);
+  assert.deepEqual(JSON.parse(app.requests[0].body), {
+    language: "hi-IN",
+    label: "Tomato___Late_blight",
+    confidence: 0.76,
+    state: "Maharashtra",
+    notes: "",
+  });
   assert.equal(app.get("#diagnosis").hidden, false);
   assert.match(app.get("#diagnosis-title").textContent, /Tomato · Late blight · 76%/);
   assert.equal(app.get("#diagnosis-alternatives").childList.length, 2);
   assert.match(app.get("#model-status").textContent, /not uploaded/i);
-  assert.match(app.get("#diagnosis-advice").textContent, /गीले पौधों को न छुएँ/);
-  assert.match(app.get("#result-message").textContent, /स्थानीय कृषि अधिकारी से पुष्टि करें/);
-  assert.equal(app.speech.spoken.at(-1).lang, "hi-IN");
+  assert.match(app.get("#diagnosis-advice").textContent, /मॉडल का संकेत स्पष्ट नहीं है/);
+  assert.equal(app.get("#result").hidden, true, "voice guidance waits until the user asks for it");
 
   app.get("#symptoms").value = queries["hi-IN"][1];
   await app.get("#symptoms").emit("input");
   await app.get("#submit-button").emit("click");
-  assert.equal(app.requests.length, 0, "the scanned signal uses the local guide without a network request");
-  assert.match(app.get("#result-message").textContent, /सलाह के बिना छिड़काव न करें/);
+  assert.equal(app.requests.length, 1, "the scanned signal uses local guidance rather than symptom diagnosis");
+  assert.match(app.get("#result-message").textContent, /आपकी बात सुनी/);
+  assert.match(app.get("#result-message").textContent, /छिड़काव न करें/);
   assert.equal(app.speech.spoken.at(-1).lang, "hi-IN");
+});
+
+test("voice response playback can be paused and resumed", async () => {
+  const app = setup();
+  app.fill();
+  await app.get("#submit-button").emit("click");
+  const utterance = app.speech.spoken[0];
+  utterance.onstart();
+  const pauseButton = app.get("#pause-speech");
+  assert.equal(pauseButton.disabled, false);
+  assert.equal(pauseButton.textContent, messages["hi-IN"].pauseVoice);
+
+  await pauseButton.emit("click");
+  assert.equal(app.speech.pauseCount, 1);
+  assert.equal(pauseButton.textContent, messages["hi-IN"].resumeVoice);
+  assert.equal(app.get("#playback-hint").textContent, messages["hi-IN"].playbackPaused);
+
+  await pauseButton.emit("click");
+  assert.equal(app.speech.resumeCount, 2);
+  assert.equal(pauseButton.textContent, messages["hi-IN"].pauseVoice);
+  assert.equal(app.get("#playback-hint").textContent, messages["hi-IN"].playbackPlaying);
+  utterance.onend();
+  assert.equal(pauseButton.disabled, true);
+});
+
+test("local audio response playback can be paused and resumed", async () => {
+  const app = setup({ voices: [], nativeAudio: true });
+  app.fill();
+  await app.get("#submit-button").emit("click");
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(app.audios.length, 1);
+
+  const pauseButton = app.get("#pause-speech");
+  await pauseButton.emit("click");
+  assert.equal(app.audios[0].paused, true);
+  assert.equal(pauseButton.textContent, messages["hi-IN"].resumeVoice);
+  await pauseButton.emit("click");
+  assert.equal(app.audios[0].paused, false);
+  assert.equal(pauseButton.textContent, messages["hi-IN"].pauseVoice);
+});
+
+test("photo plus a spoken prompt runs the local classifier and speaks guidance in the selected language", async () => {
+  const photo = { name: "leaf.png", type: "image/png" };
+  let classifiedPhoto;
+  const app = setup({
+    language: "ta-IN",
+    autoAnalyzeOnSubmit: true,
+    createClassifier: () => async (file) => {
+      classifiedPhoto = file;
+      return [
+        { label: "Tomato___Late_blight", confidence: 0.84 },
+        { label: "Tomato___Early_blight", confidence: 0.1 },
+        { label: "Tomato___healthy", confidence: 0.06 },
+      ];
+    },
+  });
+  app.get("#crop-photo").files = [photo];
+  app.get("#farm-state").value = "Tamil Nadu";
+  await app.get("#record-button").emit("click");
+  const prompt = "தக்காளி இலைகளில் பழுப்பு புள்ளிகள் உள்ளன";
+  app.recognizers[0].result(prompt);
+  app.recognizers[0].onend();
+  await app.get("#submit-button").emit("click");
+
+  assert.equal(classifiedPhoto, photo);
+  assert.equal(app.get("#diagnosis").hidden, false);
+  assert.equal(app.get("#result").hidden, false);
+  assert.match(app.get("#result-message").textContent, /உங்கள் கேள்வியைக் கேட்டேன்/);
+  assert.match(app.get("#result-message").textContent, /Tomato · Late blight · 84%/);
+  assert.equal(app.get("#result").lang, "ta-IN");
+  assert.equal(app.speech.spoken.at(-1).lang, "ta-IN");
+  assert.equal(app.speech.spoken.at(-1).text, app.get("#result-message").textContent);
+  assert.equal(app.requests.some((request) => request.url === "/api/intake"), false);
+  const reportRequest = app.requests.find((request) => request.url === "/api/diagnosis-report");
+  assert.equal(JSON.parse(reportRequest.body).notes, prompt);
 });
 
 test("pest scan returns translated local advice in the voice assistant", async () => {
@@ -190,6 +285,10 @@ test("pest scan returns translated local advice in the voice assistant", async (
   assert.equal(app.get("#pest-diagnosis").hidden, false);
   assert.match(app.get("#pest-diagnosis-title").textContent, /predators · 90%/);
   assert.match(app.get("#pest-diagnosis-advice").textContent, /हा उपयुक्त किंवा सामान्य कीटक/);
+  assert.equal(app.get("#result").hidden, true);
+  app.get("#symptoms").value = "पानांवर कोणते कीटक आहेत?";
+  await app.get("#submit-button").emit("click");
+  assert.match(app.get("#result-message").textContent, /तुमचे म्हणणे ऐकले/);
   assert.match(app.get("#result-message").textContent, /त्याला मारू नका/);
   assert.equal(app.speech.spoken.at(-1).lang, "mr-IN");
   assert.equal(app.requests.length, 0);
@@ -523,6 +622,36 @@ test("missing Marathi voice is explained BEFORE submission, with no Hindi/Englis
   assert.equal(app.get("#voice-availability").textContent, messages["mr-IN"].voiceReady);
   assert.equal(app.speech.spoken[0].lang, "mr-IN");
 });
+
+for (const language of ["ml-IN", "mr-IN"]) {
+  test(`${language}: playback retries when the browser loads its voice asynchronously`, async () => {
+    const app = setup({
+      language,
+      voices: [],
+      nativeAudio: true,
+      fetch: async (url, options) => url === "/api/tts"
+        ? response({ error: "Local speech is unavailable." }, false)
+        : response({
+          received: true,
+          diseaseModelConnected: false,
+          language,
+          message: messages[language].ready,
+        }),
+    });
+    app.fill();
+    await app.get("#submit-button").emit("click");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(app.speech.spoken.length, 0);
+    assert.equal(app.get("#playback-hint").textContent, messages[language].playbackUnavailable);
+
+    app.setVoices([{ lang: language }]);
+    await app.speech.emit("voiceschanged");
+    assert.equal(app.get("#voice-availability").textContent, messages[language].voiceReady);
+    assert.equal(app.speech.spoken.length, 1);
+    assert.equal(app.speech.spoken[0].lang, language);
+    assert.equal(app.speech.spoken[0].text, messages[language].ready);
+  });
+}
 
 test("missing synthesis is explained before a crop request", async () => {
   const app = setup({ language: "mr-IN", synthesis: false });

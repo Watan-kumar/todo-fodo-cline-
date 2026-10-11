@@ -85,4 +85,7 @@ test("dashboard markup has unique IDs, working anchors and offline-cached enhanc
   assert.match(worker, /"\/dashboard\.js"/);
   assert.match(html, /Its score is not disease severity/);
   assert.match(html, /Your next leaf check\s+<br\s*\/>starts here\./);
+  assert.ok(html.indexOf('id="new-scan"') < html.indexOf('id="voice-settings"'));
+  assert.ok(html.indexOf('id="voice-settings"') < html.indexOf('id="voice-query"'));
+  assert.match(html, /id="pause-speech"/);
 });

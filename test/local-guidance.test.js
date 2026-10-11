@@ -9,8 +9,18 @@ test("low model scores prompt a repeat photo and local confirmation", () => {
     confidence: localGuidanceThreshold() - 0.01,
     language: "hi-IN",
   });
+  assert.match(result.text, /मॉडल का स्कोर कम है/);
+  assert.match(result.text, /इस नतीजे पर भरोसा न करें/);
+});
+
+test("scores from 70% up to 85% still get uncertain guidance", () => {
+  const result = getLocalGuidance({
+    source: "disease",
+    label: "Tomato___Late_blight",
+    confidence: 0.75,
+    language: "hi-IN",
+  });
   assert.match(result.text, /मॉडल का संकेत स्पष्ट नहीं है/);
-  assert.match(result.text, /उपचार या छिड़काव न करें/);
 });
 
 test("healthy leaf signal recommends monitoring rather than treatment", () => {

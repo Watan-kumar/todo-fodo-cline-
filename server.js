@@ -6,10 +6,18 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { hasLanguage, messages } from "./public/languages.js";
+import {
+  buildDiagnosisPrompt,
+  INDIAN_STATES_AND_UTS,
+  parseDiagnosisReport,
+  retrievePesticideRows,
+} from "./pesticide-rag.js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = resolve(root, "public");
 const runtimeDir = resolve(root, "node_modules", "onnxruntime-web", "dist");
+const pesticideKnowledgePath = resolve(root, "data", "pesticide-knowledge.json");
+const diseaseLabelsPath = resolve(publicDir, "models", "plantvillage-38-labels.json");
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 const runFile = promisify(execFile);
@@ -52,11 +60,134 @@ async function renderLocalSpeech(language, text) {
   }
 }
 
+async function handleDiagnosisReport(request, response) {
+  let body = "";
+  for await (const chunk of request) {
+    body += chunk;
+    if (body.length > 10_000) {
+      return sendJson(response, 413, { error: "Diagnosis report request is too large." });
+    }
+  }
+
+  try {
+    const input = JSON.parse(body || "{}");
+    if (!input || !hasLanguage(input.language)
+      || typeof input.label !== "string"
+      || !Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1
+      || typeof input.state !== "string"
+      || !INDIAN_STATES_AND_UTS.includes(input.state)
+      || typeof input.notes !== "string" || input.notes.length > 1500) {
+      return sendJson(response, 400, { error: "A supported language, class, score, state, and short note are required." });
+    }
+    if (input.confidence < 0.7) {
+      return sendJson(response, 422, { error: "A clearer photo is needed before generating a report." });
+    }
+
+    const [labelsText, knowledgeText] = await Promise.all([
+      readFile(diseaseLabelsPath, "utf8").catch(() => null),
+      readFile(pesticideKnowledgePath, "utf8").catch(() => null),
+    ]);
+    if (!labelsText || !knowledgeText) {
+      return sendJson(response, 503, { error: "The local model labels or verified treatment knowledge file is missing." });
+    }
+
+    let labels;
+    let knowledgeRows;
+    try {
+      labels = JSON.parse(labelsText);
+      knowledgeRows = JSON.parse(knowledgeText);
+    } catch {
+      return sendJson(response, 503, { error: "The local model labels or verified treatment knowledge file is invalid." });
+    }
+    if (!Array.isArray(labels) || !labels.includes(input.label) || !Array.isArray(knowledgeRows)) {
+      return sendJson(response, 400, { error: "The disease label or local knowledge file is invalid." });
+    }
+
+    const pesticideRows = retrievePesticideRows(knowledgeRows, {
+      className: input.label,
+      state: input.state,
+    });
+    const model = process.env.OLLAMA_MODEL?.trim();
+    if (!model) {
+      return sendJson(response, 200, {
+        generatedByLLM: false,
+        pesticideRows,
+        message: "Install and configure a local Ollama instruct model to generate the explanatory report.",
+      });
+    }
+
+    try {
+      const ollamaUrl = process.env.OLLAMA_URL || "http://127.0.0.1:11434/api/chat";
+      let target;
+      try {
+        target = new URL(ollamaUrl);
+      } catch {
+        return sendJson(response, 500, { error: "The local report model URL is invalid." });
+      }
+      if (target.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname)) {
+        return sendJson(response, 500, { error: "The report model must run locally on this machine." });
+      }
+      const ollamaResponse = await fetch(ollamaUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        redirect: "error",
+        body: JSON.stringify({
+          model,
+          stream: false,
+          format: "json",
+          messages: [
+            { role: "system", content: "You write conservative crop health screening reports. Follow the requested JSON fields exactly." },
+            {
+              role: "user",
+              content: buildDiagnosisPrompt({
+                language: input.language,
+                label: input.label,
+                confidence: input.confidence,
+                notes: input.notes.trim(),
+              }),
+            },
+          ],
+          // Keep the local report concise enough for slower hardware and avoid
+          // letting an instruct model produce an unbounded narrative.
+          options: { temperature: 0.2, num_predict: 400 },
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!ollamaResponse.ok) {
+        return sendJson(response, 200, {
+          generatedByLLM: false,
+          pesticideRows,
+          message: "The local report model is unavailable. Use the conservative screening guidance shown in the app.",
+        });
+      }
+      const result = await ollamaResponse.json();
+      const report = parseDiagnosisReport(result?.message?.content, input.language);
+      return sendJson(response, 200, { generatedByLLM: true, pesticideRows, report });
+    } catch {
+      return sendJson(response, 200, {
+        generatedByLLM: false,
+        pesticideRows,
+        message: "The local report model is unavailable. Use the conservative screening guidance shown in the app.",
+      });
+    }
+  } catch {
+    return sendJson(response, 400, { error: "Please send a valid diagnosis report request." });
+  }
+}
+
 async function handleRequest(request, response) {
   const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
 
   if (url.pathname === "/api/health" && request.method === "GET") {
-    return sendJson(response, 200, { ok: true, diseaseModelConnected: false });
+    return sendJson(response, 200, {
+      ok: true,
+      diseaseModelConnected: false,
+      reportModelConfigured: Boolean(process.env.OLLAMA_MODEL?.trim()),
+    });
+  }
+
+  if (url.pathname === "/api/diagnosis-report" && request.method === "POST") {
+    return handleDiagnosisReport(request, response);
   }
 
   if (url.pathname === "/api/tts" && request.method === "POST") {

@@ -1,11 +1,12 @@
 const DISEASE_MODEL = {
-  modelPath: "/models/plant-disease-tamilnadu.onnx",
-  labelsPath: "/models/plant-disease-tamilnadu-labels.json",
+  modelPath: "/models/plantvillage-yolov8n-cls.onnx",
+  labelsPath: "/models/plantvillage-yolov8n-cls-labels.json",
   imageSize: 224,
-  resizeSize: 256,
+  resizeSize: 224,
   resizeMode: "center-crop",
-  mean: [0.5, 0.5, 0.5],
-  std: [0.5, 0.5, 0.5],
+  mean: [0, 0, 0],
+  std: [1, 1, 1],
+  outputType: "probabilities",
 };
 
 const PEST_MODEL = {
@@ -26,6 +27,21 @@ export function logitsToProbabilities(logits) {
   const total = exponentials.reduce((sum, value) => sum + value, 0);
   if (!Number.isFinite(total) || total === 0) throw new Error("The model returned invalid prediction scores.");
   return exponentials.map((value) => value / total);
+}
+
+export function classifierScoresToProbabilities(scores, outputType = "logits") {
+  if (!scores?.length || Array.from(scores).some((value) => !Number.isFinite(value))) {
+    throw new Error("The model returned invalid prediction scores.");
+  }
+  if (outputType === "probabilities") {
+    const values = Array.from(scores);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    if (values.some((value) => value < 0 || value > 1) || Math.abs(total - 1) > 0.02) {
+      throw new Error("The model returned invalid class probabilities.");
+    }
+    return values;
+  }
+  return logitsToProbabilities(scores);
 }
 
 export function topPredictions(scores, classNames, limit = 3) {
@@ -117,7 +133,7 @@ export function createOfflineClassifier({
       );
       const outputs = await session.run({ [session.inputNames[0]]: input });
       const logits = outputs[session.outputNames[0]]?.data;
-      return topPredictions(logitsToProbabilities(logits), classNames);
+      return topPredictions(classifierScoresToProbabilities(logits, model.outputType), classNames);
     } finally {
       bitmap.close?.();
     }

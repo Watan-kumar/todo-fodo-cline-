@@ -1,6 +1,7 @@
 import { hasLanguage, messages } from "./languages.js";
 import { createOfflineClassifier, createPestClassifier } from "./onnx-model.js";
 import { getLocalGuidance } from "./local-guidance.js";
+import { INDIAN_STATES_AND_UTS } from "./states.js";
 import { initSoilAssessment } from "./soil-assessment.js";
 
 export function initVoiceFlow({
@@ -9,6 +10,7 @@ export function initVoiceFlow({
   fetch = globalThis.fetch,
   createClassifier = createOfflineClassifier,
   createPest = createPestClassifier,
+  autoAnalyzeOnSubmit = true,
 } = {}) {
   const languageSelect = document.querySelector("#language");
   const recordButton = document.querySelector("#record-button");
@@ -22,6 +24,10 @@ export function initVoiceFlow({
   const photoCopy = document.querySelector(".photo-copy");
   const analyzeButton = document.querySelector("#analyze-button");
   const modelStatus = document.querySelector("#model-status");
+  const farmState = document.querySelector("#farm-state");
+  const reportStatus = document.querySelector("#report-status");
+  const reportContent = document.querySelector("#generated-report");
+  const pesticideOptions = document.querySelector("#pesticide-options");
   const diagnosisCard = document.querySelector("#diagnosis");
   const diagnosisTitle = document.querySelector("#diagnosis-title");
   const diagnosisAlternatives = document.querySelector("#diagnosis-alternatives");
@@ -36,6 +42,7 @@ export function initVoiceFlow({
   const resultCard = document.querySelector("#result");
   const resultMessage = document.querySelector("#result-message");
   const speakResultButton = document.querySelector("#speak-result");
+  const pauseSpeechButton = document.querySelector("#pause-speech");
   const playbackHint = document.querySelector("#playback-hint");
   const voiceAvailability = document.querySelector("#voice-availability");
   const testVoiceButton = document.querySelector("#test-voice");
@@ -49,6 +56,8 @@ export function initVoiceFlow({
   let pendingRequest = null;
   let currentResult = null;
   let activeUtterance = null;
+  let playbackActive = false;
+  let playbackPaused = false;
   let waitingForVoice = null;
   let voiceTestResult = null;
   let playbackTimer = null;
@@ -58,6 +67,7 @@ export function initVoiceFlow({
   let activeAudioUrl = null;
   let classifyImage = null;
   let classifyPest = null;
+  let reportRequestVersion = 0;
   let analysisVersion = 0;
   let pestAnalysisVersion = 0;
   const localSignals = { disease: null, pest: null };
@@ -69,10 +79,93 @@ export function initVoiceFlow({
       .join(" ");
   }
 
+  function activeSignal() {
+    if (localSignals.disease) return localSignals.disease;
+    if (localSignals.pest) return localSignals.pest;
+    return null;
+  }
+
   function showSignalGuidance(locale = language) {
     const text = activeGuidance(locale);
-    if (text) showResult(text, locale);
+    const signal = activeSignal();
+    if (text && signal) {
+      const label = signal.label.replaceAll("___", " · ").replaceAll("_", " ").replace(/\s+/g, " ").trim();
+      const score = Math.round(signal.confidence * 100);
+      showResult(`${messages[locale].photoReply} ${label} · ${score}%. ${text}`, locale);
+    }
     return Boolean(text);
+  }
+
+  function clearGeneratedReport({ preserveStatus = false } = {}) {
+    reportRequestVersion += 1;
+    if (!preserveStatus) reportStatus.textContent = "";
+    reportContent.textContent = "";
+    pesticideOptions.replaceChildren();
+  }
+
+  async function loadDiagnosisReport({ label, confidence, requestVersion, locale }) {
+    if (confidence < 0.7) {
+      reportStatus.textContent = "The score is below the preliminary 70% cutoff. Retake a clear close-up; this cutoff needs validation on local field photos.";
+      return;
+    }
+    if (!farmState.value) {
+      reportStatus.textContent = "Choose your state or union territory to check region-specific verified guidance. No product or dose will be shown without a verified record.";
+      return;
+    }
+
+    const currentReportVersion = ++reportRequestVersion;
+    const selectedState = farmState.value;
+    reportStatus.textContent = "Checking verified crop and state records. The language model cannot add pesticide names or doses.";
+    try {
+      const response = await fetch("/api/diagnosis-report", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          language: locale,
+          label,
+          confidence,
+          state: farmState.value,
+          notes: symptomsField.value.trim(),
+        }),
+      });
+      const payload = await response.json();
+      if (requestVersion !== analysisVersion || currentReportVersion !== reportRequestVersion
+        || selectedState !== farmState.value || locale !== language) return;
+      if (!response.ok) {
+        reportStatus.textContent = payload?.error || "The report could not be prepared.";
+        return;
+      }
+
+      if (payload.report) {
+        const report = payload.report;
+        reportContent.textContent = [
+          `Possible symptoms: ${report.symptoms}`,
+          `Possible cause: ${report.possibleCause}`,
+          `Prevention: ${report.prevention}`,
+        ].join("\n\n");
+      }
+      pesticideOptions.replaceChildren(...(Array.isArray(payload.pesticideRows) ? payload.pesticideRows : []).map((row) => {
+        const item = document.createElement("li");
+        item.textContent = `${row.optionType === "organic" ? "Organic option" : "Registered chemical option"}: ${row.product}; dose: ${row.dose}; pre-harvest interval: ${row.preHarvestIntervalDays} days. Registration ${row.registrationNumber}. `;
+        const source = document.createElement("a");
+        source.href = row.sourceUrl;
+        source.textContent = row.sourceTitle;
+        source.rel = "noreferrer";
+        item.appendChild(source);
+        return item;
+      }));
+      if (!payload.pesticideRows?.length) {
+        pesticideOptions.textContent = "No current, verified pesticide row matches this disease and state. No product or dose is recommended.";
+      }
+      reportStatus.textContent = payload.generatedByLLM
+        ? "Report generated by the configured local language model. Confirm symptoms with an agricultural professional."
+        : payload.message || "The local language model is unavailable; conservative photo guidance remains available.";
+    } catch {
+      if (requestVersion === analysisVersion && currentReportVersion === reportRequestVersion
+        && selectedState === farmState.value && locale === language) {
+        reportStatus.textContent = "The report service is unavailable. Conservative photo guidance remains available.";
+      }
+    }
   }
 
   function updateConnectionStatus() {
@@ -82,6 +175,20 @@ export function initVoiceFlow({
   }
 
   updateConnectionStatus();
+  farmState.replaceChildren(
+    Object.assign(document.createElement("option"), { value: "", textContent: "Choose state or union territory" }),
+    ...INDIAN_STATES_AND_UTS.map((state) => Object.assign(document.createElement("option"), { value: state, textContent: state })),
+  );
+  farmState.addEventListener("change", () => {
+    clearGeneratedReport({ preserveStatus: true });
+    if (localSignals.disease) {
+      void loadDiagnosisReport({
+        ...localSignals.disease,
+        requestVersion: analysisVersion,
+        locale: language,
+      });
+    }
+  });
   window.addEventListener?.("online", updateConnectionStatus);
   window.addEventListener?.("offline", updateConnectionStatus);
   window.navigator?.serviceWorker?.register("/sw.js").catch(() => {
@@ -99,6 +206,12 @@ export function initVoiceFlow({
     testVoiceButton.disabled = Boolean(recognitionSession || pendingRequest);
   }
 
+  function updatePlaybackControl() {
+    const copy = messages[currentResult?.language || language];
+    pauseSpeechButton.textContent = playbackPaused ? copy.resumeVoice : copy.pauseVoice;
+    pauseSpeechButton.disabled = !playbackActive;
+  }
+
   function clearPlaybackTimer() {
     if (playbackTimer !== null) window.clearTimeout(playbackTimer);
     playbackTimer = null;
@@ -107,6 +220,8 @@ export function initVoiceFlow({
   function cancelSpeech() {
     clearPlaybackTimer();
     activeUtterance = null;
+    playbackActive = false;
+    playbackPaused = false;
     waitingForVoice = null;
     localSpeechRequest?.abort();
     localSpeechRequest = null;
@@ -124,6 +239,7 @@ export function initVoiceFlow({
     window.speechSynthesis?.cancel();
     playbackHint.textContent = "";
     voiceTestHint.textContent = "";
+    updatePlaybackControl();
   }
 
   function clearResult() {
@@ -133,6 +249,7 @@ export function initVoiceFlow({
     resultCard.hidden = true;
     resultMessage.textContent = "";
     playbackHint.textContent = "";
+    updatePlaybackControl();
   }
 
   function matchingVoice(locale) {
@@ -195,12 +312,27 @@ export function initVoiceFlow({
       const releaseAudio = () => {
         if (activeAudio !== audio) return;
         activeAudio = null;
+        playbackActive = false;
+        playbackPaused = false;
         if (activeAudioUrl) window.URL.revokeObjectURL(activeAudioUrl);
         activeAudioUrl = null;
         localSpeechRequest = null;
+        updatePlaybackControl();
       };
       audio.onplay = () => {
-        if (isCurrentResult(result) && activeAudio === audio) hint.textContent = copy.playbackPlaying;
+        if (isCurrentResult(result) && activeAudio === audio) {
+          playbackActive = true;
+          playbackPaused = false;
+          hint.textContent = copy.playbackPlaying;
+          updatePlaybackControl();
+        }
+      };
+      audio.onpause = () => {
+        if (isCurrentResult(result) && activeAudio === audio && playbackActive) {
+          playbackPaused = true;
+          hint.textContent = copy.playbackPaused;
+          updatePlaybackControl();
+        }
       };
       audio.onended = () => {
         if (!isCurrentResult(result) || activeAudio !== audio) return;
@@ -234,14 +366,45 @@ export function initVoiceFlow({
     speakBrowser(result, hint);
   }
 
+  function toggleSpeechPlayback() {
+    if (!currentResult || !playbackActive) return;
+    const copy = messages[currentResult.language];
+    if (playbackPaused) {
+      if (activeAudio) {
+        const playback = activeAudio.play();
+        if (playback?.catch) playback.catch(() => {
+          playbackHint.textContent = copy.playbackFailed;
+        });
+      } else if (activeUtterance) {
+        window.speechSynthesis?.resume();
+      }
+      playbackPaused = false;
+      playbackHint.textContent = copy.playbackPlaying;
+    } else {
+      if (activeAudio) activeAudio.pause();
+      else if (activeUtterance) window.speechSynthesis?.pause();
+      else return;
+      playbackPaused = true;
+      playbackHint.textContent = copy.playbackPaused;
+    }
+    updatePlaybackControl();
+  }
+
   function speakBrowser(result, hint = playbackHint) {
     const isCurrent = () => isCurrentResult(result);
     if (!isCurrent()) return;
     cancelSpeech();
     const copy = messages[result.language];
     const voice = matchingVoice(result.language);
-    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance || !voice) {
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
       void speakLocally(result, hint, false);
+      return;
+    }
+    if (!voice) {
+      // Browser voices may load after the first getVoices() call (common on mobile).
+      const localAttempt = speakLocally(result, hint, false);
+      waitingForVoice = { result, hint };
+      void localAttempt;
       return;
     }
 
@@ -255,12 +418,30 @@ export function initVoiceFlow({
       utterance.onstart = () => {
         if (activeUtterance !== utterance || !isCurrent()) return;
         clearPlaybackTimer();
+        playbackActive = true;
+        playbackPaused = false;
         hint.textContent = copy.playbackPlaying;
+        updatePlaybackControl();
+      };
+      utterance.onpause = () => {
+        if (activeUtterance !== utterance || !isCurrent()) return;
+        playbackPaused = true;
+        hint.textContent = copy.playbackPaused;
+        updatePlaybackControl();
+      };
+      utterance.onresume = () => {
+        if (activeUtterance !== utterance || !isCurrent()) return;
+        playbackPaused = false;
+        hint.textContent = copy.playbackPlaying;
+        updatePlaybackControl();
       };
       utterance.onerror = (event) => {
         if (activeUtterance !== utterance || !isCurrent()) return;
         clearPlaybackTimer();
         activeUtterance = null;
+        playbackActive = false;
+        playbackPaused = false;
+        updatePlaybackControl();
         const unavailable = ["language-unavailable", "voice-unavailable", "synthesis-unavailable"].includes(event.error);
         if (event.error !== "not-allowed" && window.Audio) {
           void speakLocally(result, hint, false);
@@ -273,7 +454,10 @@ export function initVoiceFlow({
         if (activeUtterance !== utterance || !isCurrent()) return;
         clearPlaybackTimer();
         activeUtterance = null;
+        playbackActive = false;
+        playbackPaused = false;
         hint.textContent = copy.playbackFinished;
+        updatePlaybackControl();
       };
       // Some engines silently stall without emitting either start or error.
       playbackTimer = window.setTimeout(() => {
@@ -310,13 +494,14 @@ export function initVoiceFlow({
 
   function applyLanguage(hint) {
     const copy = messages[language];
-    for (const element of [recordButton, voiceHint, symptomsField, transcriptLabel, submitButton, resultCard, voiceAvailability, testVoiceButton, voiceSample, voiceTestHint]) {
+    for (const element of [recordButton, voiceHint, symptomsField, transcriptLabel, submitButton, resultCard, voiceAvailability, testVoiceButton, voiceSample, voiceTestHint, pauseSpeechButton]) {
       element.lang = language;
     }
     transcriptLabel.textContent = copy.transcriptLabel;
     symptomsField.placeholder = copy.transcriptPlaceholder;
     document.querySelector("#result-label").textContent = copy.statusLabel;
     speakResultButton.textContent = copy.hearMessage;
+    updatePlaybackControl();
     testVoiceButton.textContent = copy.testVoice;
     voiceSample.textContent = copy.voiceSample;
     photoCopy.querySelector("small").textContent = copy.photoPreview;
@@ -406,6 +591,13 @@ export function initVoiceFlow({
     request?.controller.abort();
     clearResult();
     language = languageSelect.value;
+    clearGeneratedReport();
+    if (localSignals.disease) {
+      diagnosisAdvice.textContent = getLocalGuidance({ source: "disease", ...localSignals.disease, language }).text;
+    }
+    if (localSignals.pest) {
+      pestDiagnosisAdvice.textContent = getLocalGuidance({ source: "pest", ...localSignals.pest, language }).text;
+    }
     const copy = messages[language];
     const hint = symptomsField.value.trim() ? copy.languageChanged : copy.idle;
     applyLanguage(SpeechRecognition ? hint : `${hint} ${copy.unsupported}`);
@@ -413,7 +605,13 @@ export function initVoiceFlow({
 
   photoInput.addEventListener("change", () => {
     analysisVersion += 1;
+    const request = pendingRequest;
+    pendingRequest = null;
+    request?.controller.abort();
+    updateControls();
     localSignals.disease = null;
+    localSignals.pest = null;
+    pestDiagnosis.hidden = true;
     if (photoUrl) window.URL.revokeObjectURL(photoUrl);
     photoUrl = null;
     photoCopy.querySelector("strong").textContent = "Drop a leaf photo here";
@@ -423,6 +621,7 @@ export function initVoiceFlow({
     diagnosisTitle.textContent = "";
     diagnosisAlternatives.replaceChildren();
     diagnosisAdvice.textContent = "";
+    clearGeneratedReport();
     clearResult();
     const file = photoInput.files?.[0];
     if (!file) {
@@ -445,7 +644,13 @@ export function initVoiceFlow({
 
   pestPhotoInput.addEventListener("change", () => {
     pestAnalysisVersion += 1;
+    const request = pendingRequest;
+    pendingRequest = null;
+    request?.controller.abort();
+    updateControls();
+    localSignals.disease = null;
     localSignals.pest = null;
+    diagnosisCard.hidden = true;
     pestDiagnosis.hidden = true;
     pestDiagnosisTitle.textContent = "";
     pestDiagnosisAdvice.textContent = "";
@@ -459,18 +664,19 @@ export function initVoiceFlow({
         : "Pest results are a class guess, not insect counts or a treatment threshold.";
   });
 
-  analyzeButton.addEventListener("click", async () => {
+  async function runDiseaseAnalysis() {
     const file = photoInput.files?.[0];
-    if (!file || analyzeButton.disabled) return;
+    if (!file) return false;
 
     const requestVersion = analysisVersion;
+    const requestLanguage = language;
     analyzeButton.disabled = true;
     diagnosisCard.hidden = true;
     modelStatus.textContent = "Loading the on-device model and checking the photo…";
     try {
       classifyImage ??= createClassifier();
       const predictions = await classifyImage(file);
-      if (requestVersion !== analysisVersion) return;
+      if (requestVersion !== analysisVersion || requestLanguage !== language) return false;
       const [best, ...alternatives] = predictions;
       const readableName = (label) => label.replaceAll("___", " · ").replaceAll("_", " ").replace(/\s+/g, " ").trim();
       diagnosisTitle.textContent = `${readableName(best.label)} · ${Math.round(best.confidence * 100)}%`;
@@ -479,51 +685,68 @@ export function initVoiceFlow({
         item.textContent = `${readableName(prediction.label)} · ${Math.round(prediction.confidence * 100)}%`;
         return item;
       }));
-      const advice = getLocalGuidance({ source: "disease", label: best.label, confidence: best.confidence, language });
+      const advice = getLocalGuidance({ source: "disease", label: best.label, confidence: best.confidence, language: requestLanguage });
       localSignals.disease = { label: best.label, confidence: best.confidence };
       diagnosisAdvice.textContent = advice.text;
       diagnosisCard.hidden = false;
-      modelStatus.textContent = "Checked on this phone. The photo was not uploaded. Guidance is available in the voice assistant below.";
-      showSignalGuidance();
+      modelStatus.textContent = "Checked on this phone. The photo was not uploaded. Ask the voice assistant below for spoken guidance.";
+      void loadDiagnosisReport({
+        label: best.label,
+        confidence: best.confidence,
+        requestVersion,
+        locale: requestLanguage,
+      });
+      return true;
     } catch (error) {
-      if (requestVersion === analysisVersion) {
+      if (requestVersion === analysisVersion && requestLanguage === language) {
         modelStatus.textContent = error instanceof Error
           ? error.message
           : "The offline model could not check this photo.";
       }
+      return false;
     } finally {
       if (requestVersion === analysisVersion) analyzeButton.disabled = false;
     }
+  }
+
+  analyzeButton.addEventListener("click", () => {
+    if (!analyzeButton.disabled) void runDiseaseAnalysis();
   });
 
-  analyzePestButton.addEventListener("click", async () => {
+  async function runPestAnalysis() {
     const file = pestPhotoInput.files?.[0];
-    if (!file || analyzePestButton.disabled) return;
+    if (!file) return false;
 
     const requestVersion = pestAnalysisVersion;
+    const requestLanguage = language;
     analyzePestButton.disabled = true;
     pestDiagnosis.hidden = true;
     pestModelStatus.textContent = "Loading the offline pest model and checking the photo…";
     try {
       classifyPest ??= createPest();
       const [best] = await classifyPest(file);
-      if (requestVersion !== pestAnalysisVersion) return;
-      const advice = getLocalGuidance({ source: "pest", label: best.label, confidence: best.confidence, language });
+      if (requestVersion !== pestAnalysisVersion || requestLanguage !== language) return false;
+      const advice = getLocalGuidance({ source: "pest", label: best.label, confidence: best.confidence, language: requestLanguage });
       localSignals.pest = { label: best.label, confidence: best.confidence };
       pestDiagnosisTitle.textContent = `${best.label.replaceAll("_", " ")} · ${Math.round(best.confidence * 100)}%`;
       pestDiagnosisAdvice.textContent = advice.text;
       pestDiagnosis.hidden = false;
-      pestModelStatus.textContent = "Checked on this phone. The photo was not uploaded. Guidance is available in the voice assistant below.";
-      showSignalGuidance();
+      pestModelStatus.textContent = "Checked on this phone. The photo was not uploaded. Ask the voice assistant below for spoken guidance.";
+      return true;
     } catch (error) {
-      if (requestVersion === pestAnalysisVersion) {
+      if (requestVersion === pestAnalysisVersion && requestLanguage === language) {
         pestModelStatus.textContent = error instanceof Error
           ? error.message
           : "The offline pest model could not check this photo.";
       }
+      return false;
     } finally {
       if (requestVersion === pestAnalysisVersion) analyzePestButton.disabled = false;
     }
+  }
+
+  analyzePestButton.addEventListener("click", () => {
+    if (!analyzePestButton.disabled) void runPestAnalysis();
   });
 
   submitButton.addEventListener("click", async () => {
@@ -536,17 +759,34 @@ export function initVoiceFlow({
       return;
     }
 
-    if (activeGuidance(requestLanguage)) {
-      showSignalGuidance(requestLanguage);
-      return;
-    }
-
     clearResult();
-    const request = { language: requestLanguage, controller: new AbortController() };
+    const request = {
+      language: requestLanguage,
+      analysisVersion,
+      pestAnalysisVersion,
+      controller: new AbortController(),
+    };
     pendingRequest = request;
     updateControls();
-    const isCurrent = () => pendingRequest === request && language === request.language;
+    const isCurrent = () => pendingRequest === request && language === request.language
+      && analysisVersion === request.analysisVersion
+      && pestAnalysisVersion === request.pestAnalysisVersion;
     try {
+      if (!activeGuidance(requestLanguage) && autoAnalyzeOnSubmit) {
+        const analyzed = photoInput.files?.length
+          ? await runDiseaseAnalysis()
+          : await runPestAnalysis();
+        if (!isCurrent()) return;
+        if (!analyzed) {
+          showResult(copy.requestFailed, request.language);
+          return;
+        }
+      }
+      if (activeGuidance(requestLanguage)) {
+        showSignalGuidance(requestLanguage);
+        return;
+      }
+
       const response = await fetch("/api/intake", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -574,7 +814,10 @@ export function initVoiceFlow({
     }
   });
 
-  speakResultButton.addEventListener("click", () => speakLocally(currentResult, playbackHint));
+  speakResultButton.addEventListener("click", () => {
+    if (currentResult) speak(currentResult, playbackHint);
+  });
+  pauseSpeechButton.addEventListener("click", toggleSpeechPlayback);
   testVoiceButton.addEventListener("click", async () => {
     if (recognitionSession || pendingRequest) return;
     updateVoiceAvailability();
@@ -584,7 +827,13 @@ export function initVoiceFlow({
   });
   window.speechSynthesis?.addEventListener("voiceschanged", () => {
     updateVoiceAvailability();
-    if (waitingForVoice && matchingVoice(waitingForVoice.result.language)) speak(waitingForVoice.result, waitingForVoice.hint);
+    if (!waitingForVoice || !matchingVoice(waitingForVoice.result.language)) return;
+    const waiting = waitingForVoice;
+    if (activeAudio) {
+      waitingForVoice = null;
+      return;
+    }
+    speak(waiting.result, waiting.hint);
   });
   initSoilAssessment(document);
   applyLanguage();

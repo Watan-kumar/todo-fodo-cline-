@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Verified crop disease treatment row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verified",
+    "className",
+    "state",
+    "optionType",
+    "product",
+    "dose",
+    "preHarvestIntervalDays",
+    "registrationNumber",
+    "sourceTitle",
+    "sourceUrl",
+    "verifiedAt"
+  ],
+  "properties": {
+    "verified": { "const": true },
+    "className": { "type": "string", "minLength": 1 },
+    "state": { "type": "string", "minLength": 1 },
+    "optionType": { "enum": ["chemical", "organic"] },
+    "product": { "type": "string", "minLength": 1 },
+    "dose": { "type": "string", "minLength": 1 },
+    "preHarvestIntervalDays": { "type": "integer", "minimum": 0 },
+    "registrationNumber": { "type": "string", "minLength": 1 },
+    "sourceTitle": { "type": "string", "minLength": 1 },
+    "sourceUrl": { "type": "string", "format": "uri" },
+    "verifiedAt": { "type": "string", "format": "date-time" }
+  }
+}

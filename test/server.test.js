@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { after, before, test } from "node:test";
 import { createAppServer } from "../server.js";
 import { hasLanguage, messages } from "../public/languages.js";
+import { INDIAN_STATES_AND_UTS } from "../pesticide-rag.js";
 
 let server;
 let baseUrl;
@@ -56,9 +57,62 @@ test("malformed, missing and empty intake data are rejected", async () => {
   }
 });
 
-test("health stays honest about the disconnected model", async () => {
+test("health reports that image inference is local and no report LLM is configured by default", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
-  assert.deepEqual(await response.json(), { ok: true, diseaseModelConnected: false });
+  assert.deepEqual(await response.json(), {
+    ok: true,
+    diseaseModelConnected: false,
+    reportModelConfigured: false,
+  });
+});
+
+test("diagnosis report asks for a better photo below the preliminary confidence threshold", async () => {
+  const response = await fetch(`${baseUrl}/api/diagnosis-report`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      language: "hi-IN",
+      label: "Tomato___Late_blight",
+      confidence: 0.69,
+      state: "Maharashtra",
+      notes: "",
+    }),
+  });
+  assert.equal(response.status, 422);
+  assert.match((await response.json()).error, /clearer photo/i);
+});
+
+test("diagnosis report fails closed on unsupported state or class", async () => {
+  for (const input of [
+    { language: "hi-IN", label: "Tomato___Late_blight", confidence: 0.8, state: "Neverland", notes: "" },
+    { language: "hi-IN", label: "invented disease", confidence: 0.8, state: "Maharashtra", notes: "" },
+    { language: "hi-IN", label: "Tomato___Late_blight", confidence: 0.8, state: INDIAN_STATES_AND_UTS[0], notes: "x".repeat(1501) },
+  ]) {
+    const response = await fetch(`${baseUrl}/api/diagnosis-report`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 400);
+  }
+});
+
+test("valid diagnosis report returns no pesticide recommendations while the verified store is empty", async () => {
+  const response = await fetch(`${baseUrl}/api/diagnosis-report`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      language: "hi-IN",
+      label: "Tomato___Late_blight",
+      confidence: 0.8,
+      state: "Maharashtra",
+      notes: "Brown spots on leaves",
+    }),
+  });
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.deepEqual(payload.pesticideRows, []);
+  assert.equal(payload.generatedByLLM, false);
 });
 
 test("local TTS never substitutes a different language voice", async () => {
@@ -95,6 +149,7 @@ test("browser modules and editable-transcript markup are served", async () => {
     "/languages.js",
     "/soil-assessment.js",
     "/onnx-model.js",
+    "/states.js",
     "/styles.css",
     "/sw.js",
     "/manifest.webmanifest",

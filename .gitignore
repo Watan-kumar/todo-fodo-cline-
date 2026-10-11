@@ -1,6 +1,10 @@
 venv/
+.venv*/
 node_modules/
 Clean_Dataset/
+/data/plantvillage-38/
+/runs/
+/ml/runs/
 __pycache__/
 *.pyc
 .env
@@ -8,6 +12,7 @@ __pycache__/
 *.pt
 *.pth
 *.keras
+*.onnx
 .ipynb_checkpoints/
 .DS_Store
 npm-debug.log*
